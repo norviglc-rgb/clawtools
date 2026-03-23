@@ -1,0 +1,152 @@
+import React, { useState, useEffect } from 'react';
+import { Box, Text } from 'ink';
+import { SystemInfo } from '../core/detector';
+import { InstallScreen } from './screens/install';
+import { ConfigScreen } from './screens/config';
+import { DoctorScreen } from './screens/doctor';
+import { BackupScreen } from './screens/backup';
+import { SearchScreen } from './screens/search';
+
+type MenuItem = 'install' | 'config' | 'doctor' | 'backup' | 'search' | 'exit';
+
+interface MenuItemConfig {
+  label: string;
+  description: string;
+  shortcut: string;
+}
+
+const menuItems: Record<MenuItem, MenuItemConfig> = {
+  install: { label: 'Install', description: 'Install or update OpenClaw', shortcut: '1' },
+  config: { label: 'Config', description: 'Configure providers and settings', shortcut: '2' },
+  doctor: { label: 'Doctor', description: 'Run diagnostics', shortcut: '3' },
+  backup: { label: 'Backup', description: 'Backup and restore', shortcut: '4' },
+  search: { label: 'Search', description: 'Search documentation', shortcut: '5' },
+  exit: { label: 'Exit', description: 'Exit ClawTools', shortcut: 'q' },
+};
+
+export function App({ systemInfo }: { systemInfo: SystemInfo }) {
+  const [selectedMenu, setSelectedMenu] = useState<MenuItem>('install');
+  const [showScreen, setShowScreen] = useState(false);
+
+  useEffect(() => {
+    const handleKeypress = (data: Buffer) => {
+      const key = data.toString();
+
+      if (showScreen && key === '\x1b') {
+        setShowScreen(false);
+        return;
+      }
+
+      if (!showScreen) {
+        const item = Object.entries(menuItems).find(([, config]) => config.shortcut === key);
+        if (item) {
+          if (item[0] === 'exit') {
+            process.exit(0);
+          }
+          setSelectedMenu(item[0] as MenuItem);
+          setShowScreen(true);
+        }
+      }
+    };
+
+    process.stdin.setRawMode(true);
+    process.stdin.on('data', handleKeypress);
+
+    return () => {
+      process.stdin.setRawMode(false);
+      process.stdin.removeAllListeners('data');
+    };
+  }, [showScreen]);
+
+  const renderMenu = () => (
+    <Box flexDirection="column" padding={1}>
+      <Box flexDirection="column" marginBottom={1}>
+        <Text bold>Platform: </Text>
+        <Text>{systemInfo.platform} ({systemInfo.arch})</Text>
+      </Box>
+
+      <Box flexDirection="column" marginBottom={1}>
+        <Text bold>Node.js: </Text>
+        <Text color={systemInfo.node.meetsRequirement ? 'green' : 'red'}>
+          {systemInfo.node.installed ? systemInfo.node.version : 'Not installed'}
+        </Text>
+      </Box>
+
+      <Box flexDirection="column" marginBottom={1}>
+        <Text bold>OpenClaw: </Text>
+        <Text color={systemInfo.openclaw.installed ? 'green' : 'yellow'}>
+          {systemInfo.openclaw.installed
+            ? `v${systemInfo.openclaw.version || 'unknown'}`
+            : 'Not installed'}
+        </Text>
+      </Box>
+
+      <Box marginY={1}>
+        <Text dimColor>─────────────────────────────────────</Text>
+      </Box>
+
+      <Text bold marginBottom={1}>Select an option:</Text>
+
+      {(Object.keys(menuItems) as MenuItem[]).map((key) => {
+        const item = menuItems[key];
+        const isSelected = selectedMenu === key;
+
+        return (
+          <Box key={key} flexDirection="row" marginBottom={1}>
+            <Text
+              bold={isSelected}
+              inverse={isSelected}
+              width={3}
+            >
+              {item.shortcut}
+            </Text>
+            <Box flexDirection="column" width={40}>
+              <Text bold={isSelected}>{item.label}</Text>
+              <Text dimColor>{item.description}</Text>
+            </Box>
+          </Box>
+        );
+      })}
+
+      <Box marginTop={1}>
+        <Text dimColor>Press [q] to exit • Press number to select</Text>
+      </Box>
+    </Box>
+  );
+
+  const renderScreen = () => {
+    switch (selectedMenu) {
+      case 'install':
+        return <InstallScreen systemInfo={systemInfo} />;
+      case 'config':
+        return <ConfigScreen />;
+      case 'doctor':
+        return <DoctorScreen />;
+      case 'backup':
+        return <BackupScreen />;
+      case 'search':
+        return <SearchScreen />;
+      default:
+        return null;
+    }
+  };
+
+  if (showScreen) {
+    return (
+      <Box flexDirection="column">
+        <Box padding={1} borderStyle="round" borderColor="blue">
+          <Text dimColor>Press [Esc] to go back</Text>
+        </Box>
+        {renderScreen()}
+      </Box>
+    );
+  }
+
+  return (
+    <Box flexDirection="column">
+      <Box padding={1} borderStyle="round" borderColor="cyan">
+        {renderMenu()}
+      </Box>
+    </Box>
+  );
+}

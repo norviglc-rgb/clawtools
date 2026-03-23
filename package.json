@@ -1,0 +1,53 @@
+{
+  "name": "clawtools",
+  "version": "0.1.0",
+  "description": "OpenClaw installation, configuration, and management tool",
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "keywords": [
+    "openclaw",
+    "cli",
+    "tui",
+    "openclaw-manager"
+  ],
+  "bin": {
+    "clawtools": "./bin/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./bin/index.js",
+    "dev": "tsc && node ./bin/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ink": "^4.4.1",
+    "react": "^18.2.0",
+    "better-sqlite3": "^11.6.0",
+    "diff": "^5.2.0",
+    "tar": "^6.2.1",
+    "adm-zip": "^0.5.16",
+    "fast-glob": "^3.3.2",
+    "flexsearch": "^0.7.43",
+    "ws": "^8.18.0",
+    "node-fetch": "^2.7.0",
+    "semver": "^7.6.3",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/diff": "^5.2.2",
+    "@types/tar": "^6.1.13",
+    "@types/adm-zip": "^0.5.5",
+    "@types/ws": "^8.5.12",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.2.0",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+bin/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.backup
+*.bak
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Temp
+tmp/
+temp/
+.cache/
+
+# ClawTools specific
+.clawtools/
+docs/
