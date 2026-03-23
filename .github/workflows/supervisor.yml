@@ -1,0 +1,74 @@
+name: Supervisor Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      trigger:
+        description: 'Trigger reason'
+        required: false
+        default: 'manual'
+      commit:
+        description: 'Commit SHA'
+        required: false
+
+jobs:
+  supervisor:
+    name: Run Supervisor
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Supervisor Loop
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "  Supervisor Agent - Automated Development Loop"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          echo "Trigger: ${{ inputs.trigger || 'manual' }}"
+          echo "Commit: ${{ inputs.commit || github.sha }}"
+          echo ""
+
+          # Start supervisor loop if it exists
+          if [ -f .agentflow/supervisor-loop.sh ]; then
+            bash .agentflow/supervisor-loop.sh start
+          else
+            echo "⚠ supervisor-loop.sh not found"
+          fi
+
+      - name: Checkpoint
+        if: always()
+        run: |
+          mkdir -p CHECKPOINTS
+          if [ -f FEATURES.json ]; then
+            cp FEATURES.json CHECKPOINTS/$(date +%Y%m%d-%H%M%S)-FEATURES.json
+            echo "✓ Checkpoint created"
+          fi
+
+      - name: Report Status
+        if: always()
+        run: |
+          echo ""
+          echo "═══════════════════════════════════════════════════════════"
+          echo "  Supervisor Run Complete"
+          echo "═══════════════════════════════════════════════════════════"
+
+          if [ -f FEATURES.json ] && command -v jq &> /dev/null; then
+            TOTAL=$(jq '.features | length' FEATURES.json)
+            PASS=$(jq '[.features[] | select(.status == "pass")] | length' FEATURES.json)
+            PENDING=$(jq '[.features[] | select(.status == "pending")] | length' FEATURES.json)
+            echo "Features: $PASS/$TOTAL completed, $PENDING pending"
+          fi
