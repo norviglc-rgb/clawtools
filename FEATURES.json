@@ -1,0 +1,274 @@
+{
+  "version": "0.1.0",
+  "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "features": [
+    {
+      "id": "core-001",
+      "name": "项目初始化",
+      "module": "core/init",
+      "status": "pass",
+      "priority": "P0",
+      "tests": [],
+      "notes": "初始化完成"
+    },
+    {
+      "id": "det-001",
+      "name": "平台检测",
+      "module": "core/detector",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/detector.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "det-002",
+      "name": "Node.js版本检测",
+      "module": "core/detector",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/detector.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "det-003",
+      "name": "OpenClaw安装状态检测",
+      "module": "core/detector",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/detector.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "det-004",
+      "name": "防火墙检测",
+      "module": "core/detector",
+      "status": "pending",
+      "priority": "P1",
+      "tests": ["TESTS/unit/detector.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "det-005",
+      "name": "端口检测",
+      "module": "core/detector",
+      "status": "pending",
+      "priority": "P1",
+      "tests": ["TESTS/unit/detector.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "inst-001",
+      "name": "OpenClaw安装(stable)",
+      "module": "core/installer",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/installer.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "inst-002",
+      "name": "OpenClaw安装(beta/dev)",
+      "module": "core/installer",
+      "status": "pending",
+      "priority": "P1",
+      "tests": ["TESTS/unit/installer.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "inst-003",
+      "name": "OpenClaw卸载",
+      "module": "core/installer",
+      "status": "pending",
+      "priority": "P1",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "cfg-001",
+      "name": "Provider预设配置",
+      "module": "config/providers",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/configurator.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "cfg-002",
+      "name": "API Key加密存储",
+      "module": "core/configurator",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/configurator.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "cfg-003",
+      "name": "配置文件读写",
+      "module": "core/configurator",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/configurator.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "doc-001",
+      "name": "系统诊断",
+      "module": "core/doctor",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/doctor.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "doc-002",
+      "name": "openclaw doctor集成",
+      "module": "core/doctor",
+      "status": "pending",
+      "priority": "P1",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "bak-001",
+      "name": "配置文件备份",
+      "module": "core/backup",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/backup.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "bak-002",
+      "name": "备份恢复",
+      "module": "core/backup",
+      "status": "pending",
+      "priority": "P0",
+      "tests": ["TESTS/unit/backup.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "bak-003",
+      "name": "迁移导出",
+      "module": "core/backup",
+      "status": "pending",
+      "priority": "P2",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "sea-001",
+      "name": "文档clone",
+      "module": "core/search",
+      "status": "pending",
+      "priority": "P1",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "sea-002",
+      "name": "全文索引和搜索",
+      "module": "core/search",
+      "status": "pending",
+      "priority": "P1",
+      "tests": ["TESTS/unit/search.test.ts"],
+      "assigned_to": null
+    },
+    {
+      "id": "tui-001",
+      "name": "主菜单界面",
+      "module": "cli/App",
+      "status": "pending",
+      "priority": "P0",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "tui-002",
+      "name": "安装界面",
+      "module": "cli/screens/install",
+      "status": "pending",
+      "priority": "P0",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "tui-003",
+      "name": "配置界面",
+      "module": "cli/screens/config",
+      "status": "pending",
+      "priority": "P0",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "tui-004",
+      "name": "诊断界面",
+      "module": "cli/screens/doctor",
+      "status": "pending",
+      "priority": "P0",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "tui-005",
+      "name": "备份界面",
+      "module": "cli/screens/backup",
+      "status": "pending",
+      "priority": "P1",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "tui-006",
+      "name": "搜索界面",
+      "module": "cli/screens/search",
+      "status": "pending",
+      "priority": "P1",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "db-001",
+      "name": "SQLite数据库初始化",
+      "module": "db",
+      "status": "pending",
+      "priority": "P0",
+      "tests": [],
+      "assigned_to": null
+    },
+    {
+      "id": "i18n-001",
+      "name": "国际化框架",
+      "module": "i18n",
+      "status": "pass",
+      "priority": "P0",
+      "tests": [],
+      "notes": "框架已创建"
+    },
+    {
+      "id": "i18n-002",
+      "name": "中文翻译",
+      "module": "i18n",
+      "status": "pass",
+      "priority": "P0",
+      "tests": [],
+      "notes": "中文为默认语言"
+    },
+    {
+      "id": "i18n-003",
+      "name": "英文翻译",
+      "module": "i18n",
+      "status": "pending",
+      "priority": "P1",
+      "tests": [],
+      "assigned_to": null
+    }
+  ],
+  "summary": {
+    "total": 27,
+    "pass": 3,
+    "pending": 24,
+    "blocked": 0
+  }
+}

@@ -1,67 +1,67 @@
-# Security Policy
+# 安全政策
 
-## Supported Versions
+## 支持的版本
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 版本 | 支持状态 |
+| ---- | -------- |
+| 0.1.x | :white_check_mark: 支持 |
 
-## Reporting a Vulnerability
+## 报告安全漏洞
 
-If you discover a security vulnerability within ClawTools, please follow these steps:
+如果您在 ClawTools 中发现安全漏洞，请按以下步骤报告：
 
-### For Security Researchers / Users
+### 给安全研究人员 / 用户
 
-1. **Do NOT** create a public GitHub issue for security vulnerabilities
-2. Send a detailed report to the maintainer via:
-   - GitHub Security Advisories (preferred)
-   - Or contact directly through GitHub profile
+1. **请勿** 为安全漏洞创建公开的 GitHub Issue
+2. 通过以下方式向维护者发送详细报告：
+   - GitHub 安全公告（首选）
+   - 或直接通过 GitHub 主页联系
 
-3. Include the following information in your report:
-   - Type of vulnerability
-   - Full paths of source file(s) related to the vulnerability
-   - Location of the affected source code
-   - Step-by-step instructions to reproduce the issue
-   - Proof-of-concept or exploit code (if possible)
-   - Impact assessment of the vulnerability
+3. 报告中请包含以下信息：
+   - 漏洞类型
+   - 与漏洞相关的源文件完整路径
+   - 受影响源代码的位置
+   - 复现漏洞的步骤
+   -概念验证或利用代码（如果可能）
+   - 漏洞影响评估
 
-### What to Expect
+### 预期响应
 
-- Acknowledgment of your report within 48 hours
-- Regular updates on the progress
-- Credit for the discovery (unless you prefer to remain anonymous)
+- 48 小时内确认收到您的报告
+- 定期更新进度
+- 发现者荣誉（除非您希望保持匿名）
 
-### Scope
+### 涵盖范围
 
-This security policy covers:
-- ClawTools core functionality
-- Installation scripts
-- API key handling and storage
-- Configuration management
+本安全政策涵盖：
+- ClawTools 核心功能
+- 安装脚本
+- API 密钥处理和存储
+- 配置管理
 
-### Out of Scope
+### 不在范围内
 
-- Social engineering attacks
-- Physical security attacks
-- Attacks against systems not running ClawTools
-- Vulnerabilities in third-party dependencies (please report to upstream projects)
+- 社会工程攻击
+- 物理安全攻击
+- 针对未运行 ClawTools 的系统的攻击
+- 第三方依赖中的漏洞（请向相关上游项目报告）
 
-## Security Best Practices
+## 安全最佳实践
 
-When using ClawTools:
+使用 ClawTools 时：
 
-1. **API Keys**: Store API keys securely. ClawTools encrypts keys in local storage, but always use environment variables for production environments.
+1. **API 密钥**：安全存储 API 密钥。ClawTools 在本地存储中加密密钥，但生产环境请务必使用环境变量。
 
-2. **Permissions**: Grant minimum necessary permissions to the user running ClawTools.
+2. **权限**：授予运行 ClawTools 的用户最小必要权限。
 
-3. **Updates**: Keep ClawTools updated to receive security patches.
+3. **更新**：保持 ClawTools 更新以接收安全修复。
 
-4. **Backups**: Regularly backup your OpenClaw configuration before making changes.
+4. **备份**：在更改前定期备份 OpenClaw 配置。
 
-## Security Updates
+## 安全更新
 
-Security updates will be released as patch versions (e.g., 0.1.1) and announced through:
+安全更新将作为补丁版本发布（如 0.1.1），并通过以下方式公告：
 - GitHub Releases
-- Project README updates
+- 项目 README 更新
 
-Thank you for helping keep ClawTools and its users safe!
+感谢您帮助保护 ClawTools 及其用户的安全！

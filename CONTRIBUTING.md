@@ -1,153 +1,153 @@
-# Contributing to ClawTools
+# 为 ClawTools 贡献
 
-Thank you for your interest in contributing to ClawTools!
+感谢您对 ClawTools 贡献的兴趣！
 
-## Code of Conduct
+## 行为准则
 
-This project adheres to a code of conduct that all contributors are expected to follow. Please be respectful and constructive in all interactions.
+本项目遵守所有贡献者都应遵循的行为准则。请在所有互动中保持尊重和建设性。
 
-## How Can I Contribute?
+## 如何贡献？
 
-### Reporting Bugs
+### 报告 Bug
 
-Before creating a bug report:
-- Check the [issue tracker](https://github.com/norviglc-rgb/clawtools/issues) to avoid duplicates
-- Verify the bug exists in the latest version
-- Collect information about your environment (OS, Node.js version, etc.)
+创建 Bug 报告之前：
+- 检查 [Issue 追踪器](https://github.com/norviglc-rgb/clawtools/issues) 避免重复
+- 确认 Bug 存在于最新版本
+- 收集您的环境信息（操作系统、Node.js 版本等）
 
-When filing a bug report, include:
-- A clear, descriptive title
-- Steps to reproduce the issue
-- Expected vs actual behavior
-- Relevant logs or error messages
-- Your environment details
+提交 Bug 报告时，请包含：
+- 清晰、描述性的标题
+- 重现问题的步骤
+- 预期与实际行为
+- 相关日志或错误消息
+- 您的环境详情
 
-### Suggesting Features
+### 建议功能
 
-Feature suggestions are welcome! Please:
-- Search existing issues before creating a new one
-- Provide a clear use case and expected behavior
-- Explain why this feature would benefit users
+欢迎提出功能建议！请：
+- 创建新 Issue 前先搜索现有 Issue
+- 提供清晰的使用场景和预期行为
+- 解释此功能对用户的益处
 
-### Pull Requests
+### 提交 Pull Request
 
-1. **Fork the Repository**
+1. **Fork 仓库**
    ```bash
    git clone https://github.com/norviglc-rgb/clawtools.git
    cd clawtools
    ```
 
-2. **Create a Feature Branch**
+2. **创建功能分支**
    ```bash
-   git checkout -b feature/your-feature-name
-   # or
-   git checkout -b fix/your-bug-fix
+   git checkout -b feature/您的功能名称
+   # 或
+   git checkout -b fix/您的修复名称
    ```
 
-3. **Set Up Development Environment**
+3. **设置开发环境**
    ```bash
    npm install
    npm run build
    ```
 
-4. **Make Your Changes**
-   - Follow existing code style
-   - Write clear, descriptive commit messages
-   - Add tests if applicable
-   - Update documentation as needed
+4. **进行修改**
+   - 遵循现有代码风格
+   - 编写清晰、描述性的提交消息
+   - 如有适用，添加测试
+   - 按需更新文档
 
-5. **Test Your Changes**
+5. **测试您的修改**
    ```bash
    npm run typecheck
    npm start
    ```
 
-6. **Commit and Push**
+6. **提交并推送**
    ```bash
    git add .
-   git commit -m "Add: descriptive commit message"
-   git push origin feature/your-feature-name
+   git commit -m "Add: 描述性提交消息"
+   git push origin feature/您的功能名称
    ```
 
-7. **Open a Pull Request**
-   - Fill out the PR template
-   - Link related issues
-   - Wait for review
+7. **打开 Pull Request**
+   - 填写 PR 模板
+   - 关联相关 Issue
+   - 等待审核
 
-## Development Setup
+## 开发环境设置
 
-### Prerequisites
+### 前置要求
 
 - Node.js 20+
-- npm or pnpm
+- npm 或 pnpm
 
-### Project Structure
+### 项目结构
 
 ```
 clawtools/
-├── cli/           # TUI interface
-│   └── screens/   # UI screens
-├── core/          # Business logic
-├── config/        # Configuration presets
-├── db/            # Database layer
-├── i18n/          # Internationalization
-└── scripts/       # Installation scripts
+├── cli/           # TUI 界面
+│   └── screens/   # UI 界面
+├── core/          # 业务逻辑
+├── config/        # 配置预设
+├── db/            # 数据库层
+├── i18n/          # 国际化
+└── scripts/       # 安装脚本
 ```
 
-### Coding Standards
+### 代码规范
 
-- Use TypeScript for all new code
-- Follow existing code formatting
-- Write self-documenting code with clear variable/function names
-- Add JSDoc comments for public APIs
-- Keep functions small and focused
+- 所有新代码使用 TypeScript
+- 遵循现有代码格式
+- 使用清晰的变量/函数名称编写自文档化代码
+- 为公共 API 添加 JSDoc 注释
+- 保持函数小而专注
 
-### Testing
+### 测试
 
-Run the test suite:
+运行测试套件：
 ```bash
 npm run test
 ```
 
-### Commit Message Format
+### 提交消息格式
 
 ```
-type(scope): description
+类型(范围): 描述
 
-Types:
-- Add: New feature
-- Fix: Bug fix
-- Update: Update existing feature
-- Refactor: Code refactoring
-- Docs: Documentation changes
-- Style: Formatting, no code change
-- Test: Adding tests
-- Chore: Maintenance tasks
+类型：
+- Add: 新功能
+- Fix: Bug 修复
+- Update: 更新现有功能
+- Refactor: 代码重构
+- Docs: 文档更改
+- Style: 格式调整，无代码变更
+- Test: 添加测试
+- Chore: 维护任务
 ```
 
-Examples:
+示例：
 ```
-Add(config): Add MiniMax provider support
-Fix(installer): Handle missing Node.js gracefully
-Docs(readme): Update installation instructions
+Add(config): 添加 MiniMax provider 支持
+Fix(installer): 优雅处理 Node.js 缺失情况
+Docs(readme): 更新安装说明
 ```
 
-## Branching Strategy
+## 分支策略
 
-- `main` - Stable release branch
-- `develop` - Development branch (if needed)
-- `feature/*` - New feature branches
-- `fix/*` - Bug fix branches
+- `main` - 稳定发布分支
+- `develop` - 开发分支（如需要）
+- `feature/*` - 新功能分支
+- `fix/*` - Bug 修复分支
 
-## License
+## 许可证
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+贡献即表示您同意您的贡献将采用 MIT 许可证。
 
-## Questions?
+## 问题？
 
-Feel free to:
-- Open an issue for questions
-- Check existing discussions
-- Contact the maintainer
+欢迎：
+- 打开 Issue 提问
+- 查看现有讨论
+- 联系维护者
 
-Thank you for contributing to ClawTools!
+感谢您为 ClawTools 贡献！

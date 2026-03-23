@@ -8,7 +8,7 @@ OpenClaw 安装、配置与管理套件
 ## 功能特性
 
 - **一键安装** - 一条命令安装 OpenClaw
-- **多版本支持** - 可选择 Stable（稳定版）、Beta（测试版）或 Dev（开发版）通道
+- **多版本支持** - 可选择 Stable、Beta 或 Dev 通道
 - **Provider 管理** - 配置 API 提供商（OpenAI、Anthropic、MiniMax、智谱）
 - **系统诊断** - 运行系统检查并修复常见问题
 - **备份与恢复** - 保护您的 OpenClaw 配置
@@ -51,7 +51,7 @@ clawtools
 
 ## 参与贡献
 
-欢迎贡献！请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献指南。
+欢迎贡献！请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解指南。
 
 ## 安全
 
