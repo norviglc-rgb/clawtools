@@ -58,13 +58,14 @@
       "id": "FEAT-005",
       "name": "备份配置",
       "module": "打包配置文件",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
       "tests": [
         "TESTS/unit/打包配置文件.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:29:30.221Z"
     },
     {
       "id": "FEAT-006",
