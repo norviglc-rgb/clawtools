@@ -121,13 +121,14 @@
       "id": "FEAT-010",
       "name": "环境检测",
       "module": "检测 Node.js、平台、防火墙、公网IP等",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
       "tests": [
         "TESTS/unit/检测 Node.js、平台、防火墙、公网IP等.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:26:30.856Z"
     },
     {
       "id": "FEAT-011",
