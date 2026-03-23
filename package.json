@@ -23,32 +23,35 @@
     "start": "node ./bin/index.js",
     "dev": "tsc && node ./bin/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'No tests yet' && exit 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "echo 'No lint configured' && exit 0"
   },
   "dependencies": {
-    "ink": "^4.4.1",
-    "react": "^18.2.0",
-    "better-sqlite3": "^11.6.0",
-    "diff": "^5.2.0",
-    "tar": "^6.2.1",
     "adm-zip": "^0.5.16",
+    "better-sqlite3": "^11.6.0",
+    "chalk": "^4.1.2",
+    "diff": "^5.2.0",
     "fast-glob": "^3.3.2",
     "flexsearch": "^0.7.43",
-    "ws": "^8.18.0",
+    "ink": "^4.4.1",
     "node-fetch": "^2.7.0",
+    "react": "^18.2.0",
     "semver": "^7.6.3",
-    "chalk": "^4.1.2"
+    "tar": "^6.2.1",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
     "@types/better-sqlite3": "^7.6.11",
     "@types/diff": "^5.2.2",
-    "@types/tar": "^6.1.13",
-    "@types/adm-zip": "^0.5.5",
-    "@types/ws": "^8.5.12",
     "@types/node": "^22.10.2",
     "@types/react": "^18.2.0",
-    "typescript": "^5.7.2"
+    "@types/tar": "^6.1.13",
+    "@types/ws": "^8.5.12",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.1"
   },
   "engines": {
     "node": ">=20.0.0"

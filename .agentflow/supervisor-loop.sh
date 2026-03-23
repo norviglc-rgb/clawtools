@@ -52,9 +52,11 @@ const q = '$query';
 
 // 支持: .features | length
 // 支持: .features[] | select(.status == \"pending\") | length
+// 支持: .features[] | select(.status == \"pending\") | select(.priority == \"P0\" or .priority == \"P1\") | length
 // 支持: .features[] | select(.status == \"pending\") | sort_by(.priority) | .[0]
 // 支持: .features[] | select(.id == \"ID\") | .status
 const statusMatch = q.match(/select\(.*?\.status == \\\"([^\\\"]+)\\\"\)/);
+const priorityOrMatch = q.match(/select\(.*?\.priority == \\\"([^\\\"]+)\\\" or .*?\.priority == \\\"([^\\\"]+)\\\"\)/);
 const sortMatch = q.match(/sort_by\(.*?\)/);
 const firstMatch = q.includes('.[0]');
 const lengthOnly = q.includes('| length');
@@ -62,6 +64,15 @@ const idMatch = q.match(/select\(.*?\.id == \\\"([^\\\"]+)\\\"\)/);
 
 if (q.includes('.features | length')) {
     console.log(data.features.length);
+} else if (priorityOrMatch && lengthOnly) {
+    // Handle: select(.priority == \"P0\" or .priority == \"P1\") | length
+    const p1 = priorityOrMatch[1];
+    const p2 = priorityOrMatch[2];
+    const status = statusMatch ? statusMatch[1] : null;
+    let results = data.features;
+    if (status) results = results.filter(f => f.status === status);
+    results = results.filter(f => f.priority === p1 || f.priority === p2);
+    console.log(results.length);
 } else if (statusMatch && lengthOnly) {
     const status = statusMatch[1];
     const results = data.features.filter(f => f.status === status);
