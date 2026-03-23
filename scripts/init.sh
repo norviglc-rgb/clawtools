@@ -1,24 +1,17 @@
 #!/bin/bash
 # =============================================================================
-# AgentFlow Initializer - v1.0
-# A reusable framework for initializing long-running agent development projects
-# Based on Anthropic's "Effective Harnesses for Long-Running Agents"
+# AgentFlow Initializer - v2.0
+# Intelligent project initialization with automatic SPEC and FEATURES generation
 #
-# This script creates the complete infrastructure for automated agent development:
-# 1. Project scaffolding
-# 2. Supervisor Agent instructions (with loop & exit conditions)
-# 3. Trigger mechanism design
-# 4. CI/CD configuration
+# Usage:
+#   bash init.sh                           # Interactive mode
+#   bash init.sh --name "MyProject"        # Quick mode with args
+#   bash init.sh --file REQUIREMENTS.md    # File-based mode
 # =============================================================================
 
 set -e
 
-# =============================================================================
-# Configuration
-# =============================================================================
-
-readonly SCRIPT_VERSION="1.0"
-readonly AGENTFLOW_VERSION="1.0"
+readonly VERSION="2.0"
 
 # Colors
 RED='\033[0;31m'
@@ -26,7 +19,21 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m'
+
+# =============================================================================
+# Global Variables
+# =============================================================================
+
+PROJECT_NAME=""
+PROJECT_DESC=""
+PROJECT_TYPE=""
+TECH_STACK=()
+PLATFORMS=()
+FEATURES=()
+PRIORITY_MAP=()
+PROJECT_DIR="."
 
 # =============================================================================
 # Helper Functions
@@ -35,15 +42,12 @@ NC='\033[0m'
 log() {
     local level="$1"
     shift
-    local message="$*"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo -e "${BLUE}[${timestamp}]${NC} [${level}] $message"
+    echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} [${level}] $*"
 }
-
-log_info()    { log "${CYAN}INFO${NC}" "$@"; }
-log_success() { log "${GREEN}SUCCESS${NC}" "$@"; }
-log_warning() { log "${YELLOW}WARNING${NC}" "$@"; }
-log_error()   { log "${RED}ERROR${NC}" "$@"; }
+info()    { log "${CYAN}INFO${NC}" "$@"; }
+success() { log "${GREEN}SUCCESS${NC}" "$@"; }
+warn()    { log "${YELLOW}WARN${NC}" "$@"; }
+error()   { log "${RED}ERROR${NC}" "$@" >&2; }
 
 section() {
     echo ""
@@ -52,20 +56,656 @@ section() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
-check_command() {
-    if ! command -v "$1" &> /dev/null; then
-        log_error "$1 is not installed"
-        return 1
+ask() {
+    local var_name="$1"
+    local prompt="$2"
+    local default="${3:-}"
+    local required="${4:-yes}"
+
+    echo -en "${YELLOW}$prompt${NC}"
+    if [ -n "$default" ]; then
+        echo -en " ${MAGENTA}[$default]${NC}"
     fi
-    return 0
+    echo -en ": "
+    read -r value
+
+    if [ -z "$value" ] && [ -n "$default" ]; then
+        value="$default"
+    fi
+
+    if [ -z "$value" ] && [ "$required" = "yes" ]; then
+        warn "This field is required, please enter a value"
+        ask "$var_name" "$prompt" "$default" "$required"
+        return
+    fi
+
+    eval "$var_name='$value'"
 }
 
-create_directory() {
-    local dir="$1"
-    if [ ! -d "$dir" ]; then
-        mkdir -p "$dir"
-        log_info "Created: $dir"
+ask_choice() {
+    local var_name="$1"
+    local prompt="$2"
+    shift 2
+    local options=("$@")
+    local num=${#options[@]}
+
+    echo -e "${YELLOW}$prompt${NC}"
+    for i in "${!options[@]}"; do
+        echo -e "  ${CYAN}$((i+1))${NC}. ${options[$i]}"
+    done
+    echo -en "  ${MAGENTA}Enter choice (1-$num): ${NC}"
+    read -r choice
+
+    if [ -z "$choice" ] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$num" ]; then
+        warn "Invalid choice, please try again"
+        ask_choice "$var_name" "$prompt" "${options[@]}"
+        return
     fi
+
+    eval "$var_name='${options[$((choice-1))]}'"
+}
+
+ask_multiple() {
+    local prompt="$1"
+    shift
+    local result=()
+
+    echo -e "${YELLOW}$prompt${NC}"
+    echo -e "${MAGENTA}(Press Enter twice to finish)${NC}"
+
+    while true; do
+        echo -en "  > "
+        read -r line
+        if [ -z "$line" ]; then
+            break
+        fi
+        result+=("$line")
+    done
+
+    echo "${result[@]}"
+}
+
+ask_features() {
+    echo -e "${YELLOW}请描述你需要的功能（一个一行，回车两次结束）：${NC}"
+    echo -e "${MAGENTA}格式: 功能名称 | 模块路径 | 优先级(P0/P1/P2)${NC}"
+    echo -e "${MAGENTA}例如: 用户认证 | auth/ | P0${NC}"
+    echo ""
+
+    local features=()
+    while true; do
+        echo -en "${CYAN}功能 (名称|模块|Priority): ${NC}"
+        read -r line
+
+        if [ -z "$line" ]; then
+            # Check if user wants to continue
+            if [ ${#features[@]} -eq 0 ]; then
+                echo -e "${YELLOW}还没有添加任何功能，确定要结束吗？${NC}(y/n)"
+                read -r confirm
+                [ "$confirm" != "y" ] && continue
+            fi
+            break
+        fi
+
+        # Parse: name | module | priority
+        IFS='|' read -r name module priority <<< "$line"
+        name=$(echo "$name" | xargs)
+        module=$(echo "$module" | xargs)
+        priority=$(echo "${priority:-P1}" | xargs)
+
+        if [ -z "$name" ]; then
+            warn "功能名称不能为空"
+            continue
+        fi
+
+        features+=("$name|$module|$priority")
+        success "添加: $name ($priority)"
+    done
+
+    echo "${features[@]}"
+}
+
+confirm() {
+    local prompt="$1"
+    local default="${2:-n}"
+    echo -en "${YELLOW}$prompt${NC} ${MAGENTA}[y/N]${NC}: "
+    read -r confirm
+    confirm=${confirm:-$default}
+    [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]
+}
+
+# =============================================================================
+# Parse Arguments
+# =============================================================================
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --name)
+                PROJECT_NAME="$2"
+                shift 2
+                ;;
+            --desc)
+                PROJECT_DESC="$2"
+                shift 2
+                ;;
+            --type)
+                PROJECT_TYPE="$2"
+                shift 2
+                ;;
+            --stack)
+                IFS=',' read -ra TECH_STACK <<< "$2"
+                shift 2
+                ;;
+            --platforms)
+                IFS=',' read -ra PLATFORMS <<< "$2"
+                shift 2
+                ;;
+            --file)
+                read_requirements_file "$2"
+                shift 2
+                ;;
+            --project-dir)
+                PROJECT_DIR="$2"
+                shift 2
+                ;;
+            --interactive)
+                INTERACTIVE_MODE=yes
+                shift
+                ;;
+            --help|-h)
+                show_help
+                exit 0
+                ;;
+            *)
+                error "Unknown option: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+}
+
+show_help() {
+    cat << 'HELP'
+AgentFlow Initializer v2.0
+
+Usage:
+  bash init.sh [OPTIONS]
+
+Options:
+  --name NAME           Project name
+  --desc DESCRIPTION    Project description
+  --type TYPE           Project type (cli/web/lib/api/cli-tool)
+  --stack STACK         Tech stack (comma-separated)
+  --platforms PLATFORMS Target platforms (comma-separated)
+  --file FILE           Read requirements from file
+  --project-dir DIR     Project directory (default: .)
+  --interactive         Force interactive mode
+  --help, -h            Show this help
+
+Examples:
+  # Interactive mode
+  bash init.sh --interactive
+
+  # Quick start with arguments
+  bash init.sh --name "MyCLI" --desc "A useful CLI tool" --type cli-tool --stack "Node.js,TypeScript"
+
+  # From requirements file
+  bash init.sh --file REQUIREMENTS.md
+
+HELP
+}
+
+read_requirements_file() {
+    local file="$1"
+    if [ ! -f "$file" ]; then
+        error "Requirements file not found: $file"
+        exit 1
+    fi
+
+    info "Reading requirements from: $file"
+
+    # Parse markdown-style requirements
+    PROJECT_NAME=$(grep "^# " "$file" | head -1 | sed 's/^# //')
+    PROJECT_DESC=$(grep -A3 "^## Overview" "$file" | tail -1 | xargs)
+
+    # Extract tech stack
+    while IFS= read -r line; do
+        if [[ "$line" =~ -\ \*\*(.+)\*\*: ]]; then
+            TECH_STACK+=("${BASH_REMATCH[1]}")
+        fi
+    done < "$file"
+}
+
+# =============================================================================
+# Interactive Mode
+# =============================================================================
+
+run_interactive() {
+    section "Step 1: Project Basic Information"
+
+    ask PROJECT_NAME "项目名称" "" yes
+    ask PROJECT_DESC "项目描述" "" yes
+    ask_choice PROJECT_TYPE "项目类型" "CLI工具" "Web应用" "命令行工具" "API服务" "Node.js库"
+
+    section "Step 2: Technology Stack"
+    echo -e "${YELLOW}输入技术栈（回车一次一个，回车两次结束）：${NC}"
+    echo -e "${MAGENTA}例如: Node.js, TypeScript, React, Ink${NC}"
+
+    TECH_STACK=()
+    while true; do
+        echo -en "  ${CYAN}技术栈: ${NC}"
+        read -r stack
+        [ -z "$stack" ] && break
+        TECH_STACK+=("$stack")
+    done
+
+    if [ ${#TECH_STACK[@]} -eq 0 ]; then
+        TECH_STACK=("Node.js" "TypeScript")
+    fi
+
+    section "Step 3: Target Platforms"
+    echo -e "${YELLOW}选择目标平台：${NC}"
+    PLATFORMS=()
+    for platform in "Windows" "Linux" "macOS" "WSL" "Docker"; do
+        echo -en "  是否支持 ${CYAN}$platform${NC}? (y/n): "
+        read -r yn
+        if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
+            PLATFORMS+=("$platform")
+        fi
+    done
+
+    if [ ${#PLATFORMS[@]} -eq 0 ]; then
+        PLATFORMS=("Windows" "Linux" "macOS")
+    fi
+
+    section "Step 4: Core Features"
+    echo -e "${YELLOW}请描述你需要的功能：${NC}"
+    echo -e "${MAGENTA}格式: 功能名称 | 模块路径 | 优先级(P0/P1/P2)${NC}"
+    echo -e "${MAGENTA}例如: 用户认证 | auth/ | P0${NC}"
+    echo ""
+
+    local features_input
+    features_input=$(ask_features)
+    IFS=' ' read -ra FEATURES <<< "$features_input"
+
+    section "Step 5: Confirm"
+    echo -e "${CYAN}项目名称:${NC} $PROJECT_NAME"
+    echo -e "${CYAN}项目描述:${NC} $PROJECT_DESC"
+    echo -e "${CYAN}项目类型:${NC} $PROJECT_TYPE"
+    echo -e "${CYAN}技术栈:${NC} ${TECH_STACK[*]}"
+    echo -e "${CYAN}平台:${NC} ${PLATFORMS[*]}"
+    echo -e "${CYAN}功能数量:${NC} ${#FEATURES[@]}"
+    echo ""
+
+    if ! confirm "确认以上信息正确"; then
+        warn "好的，让我重新开始..."
+        unset PROJECT_NAME PROJECT_DESC PROJECT_TYPE TECH_STACK PLATFORMS FEATURES
+        run_interactive
+    fi
+}
+
+# =============================================================================
+# Generate SPEC.md
+# =============================================================================
+
+generate_spec() {
+    local file="$PROJECT_DIR/SPEC.md"
+    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    info "Generating SPEC.md..."
+
+    cat > "$file" << SPECEOF
+# $PROJECT_NAME
+
+## Metadata
+
+| 字段 | 值 |
+|------|-----|
+| 项目名称 | $PROJECT_NAME |
+| 版本 | 0.1.0 |
+| 创建日期 | $timestamp |
+| 最后更新 | $timestamp |
+| 项目类型 | $PROJECT_TYPE |
+
+## 1. 项目概述
+
+$PROJECT_DESC
+
+## 2. 技术栈
+
+$(generate_tech_stack_md)
+
+## 3. 目标平台
+
+$(generate_platforms_md)
+
+## 4. 功能规格
+
+$(generate_features_spec_md)
+
+## 5. 项目结构
+
+$(generate_project_structure_md)
+
+## 6. 质量标准
+
+- 测试覆盖率 ≥ 80%
+- 所有公共 API 有 TypeScript 类型定义
+- 遵循 ESLint 规则
+- 每次 commit 必须通过 typecheck
+
+## 7. 退出条件
+
+项目完成当且仅当以下所有条件满足：
+
+| 条件 | 检查标准 |
+|------|----------|
+| 开发完成 | 所有 P0/P1 功能的 status="pass" |
+| 测试完成 | 测试覆盖率 ≥ 80% 且所有测试通过 |
+| 无阻塞bug | 无 open 的 P0/P1 bug |
+
+## 8. 架构设计
+
+$(generate_architecture_md)
+
+## 9. API 设计（如果有）
+
+（待补充）
+
+## 10. 数据模型（如果有）
+
+（待补充）
+
+---
+
+*此文件由 AgentFlow Initializer v$VERSION 自动生成*
+SPECEOF
+
+    success "Created: SPEC.md"
+}
+
+generate_tech_stack_md() {
+    echo "| 技术 | 用途 |"
+    echo "|------|------|"
+    for tech in "${TECH_STACK[@]}"; do
+        local usage=""
+        case "${tech,,}" in
+            *typescript*) usage="类型安全" ;;
+            *node.js*) usage="运行时环境" ;;
+            *react*) usage="UI框架" ;;
+            *ink*) usage="TUI框架" ;;
+            *sqlite*) usage="本地数据库" ;;
+            *better-sqlite3*) usage="SQLite驱动" ;;
+            *flexsearch*) usage="全文搜索" ;;
+            *vite*) usage="构建工具" ;;
+            *express*) usage="Web框架" ;;
+            *) usage="待定" ;;
+        esac
+        echo "| $tech | $usage |"
+    done
+}
+
+generate_platforms_md() {
+    echo "| 平台 | 支持 |"
+    echo "|------|------|"
+    for platform in "${PLATFORMS[@]}"; do
+        echo "| $platform | ✅ |"
+    done
+}
+
+generate_features_spec_md() {
+    echo "### 4.1 功能列表"
+    echo ""
+    echo "| ID | 功能名称 | 模块 | 优先级 | 状态 |"
+    echo "|----|----------|------|--------|------|"
+
+    local index=1
+    for feat in "${FEATURES[@]}"; do
+        IFS='|' read -r name module priority <<< "$feat"
+        local id=$(printf "FEAT-%03d" $index)
+        echo "| $id | $name | $module | $priority | pending |"
+        index=$((index + 1))
+    done
+
+    echo ""
+    echo "### 4.2 核心功能详细说明"
+    echo ""
+
+    index=1
+    for feat in "${FEATURES[@]}"; do
+        IFS='|' read -r name module priority <<< "$feat"
+        local id=$(printf "FEAT-%03d" $index)
+        echo "#### $id: $name"
+        echo ""
+        echo "**模块**: \`$module\`"
+        echo ""
+        echo "**优先级**: $priority"
+        echo ""
+        echo "**描述**: （待补充具体功能描述）"
+        echo ""
+        echo "**验收标准**:"
+        echo "- [ ] 功能实现"
+        echo "- [ ] 单元测试"
+        echo "- [ ] 集成测试"
+        echo ""
+        index=$((index + 1))
+    done
+}
+
+generate_project_structure_md() {
+    echo '```'"
+echo 'project/'
+echo '├── cli/              # 命令行界面'
+echo '│   └── index.tsx     # TUI入口'
+echo '├── core/             # 核心业务逻辑'
+echo '│   └── index.ts      # 核心模块'
+echo '├── config/           # 配置'
+echo '├── db/               # 数据库层'
+echo '├── i18n/             # 国际化'
+echo '├── tests/            # 测试'
+echo '│   ├── unit/         # 单元测试'
+echo '│   └── e2e/          # 端到端测试'
+echo '├── docs/             # 文档'
+echo '├── scripts/          # 脚本'
+echo '└── package.json'
+echo '```'
+}
+
+generate_architecture_md() {
+    cat << 'ARCHARCHEOF'
+### 系统架构
+
+（本项目采用模块化架构）
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      用户界面层                          │
+│                    (CLI / TUI)                         │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                      业务逻辑层                          │
+│                  (core/* modules)                       │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                       数据层                             │
+│               (db/* + config/* )                       │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                      外部服务层                          │
+│               (OpenClaw API / Provider APIs)            │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 设计原则
+
+1. **模块化**: 每个功能模块独立，低耦合
+2. **可测试**: 业务逻辑与UI分离，便于单元测试
+3. **可扩展**: 新功能通过添加模块实现，不修改核心
+ARCHARCHEOF
+}
+
+# =============================================================================
+# Generate FEATURES.json
+# =============================================================================
+
+generate_features_json() {
+    local file="$PROJECT_DIR/FEATURES.json"
+    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    info "Generating FEATURES.json..."
+
+    # Start JSON
+    echo '{
+  "version": "0.1.0",
+  "created": "'"$timestamp"'",
+  "updated": "'"$timestamp"'",
+  "features": [' > "$file"
+
+    local first=yes
+    local index=1
+    for feat in "${FEATURES[@]}"; do
+        IFS='|' read -r name module priority <<< "$feat"
+        local id=$(printf "FEAT-%03d" $index)
+
+        # Get test file path based on module
+        local test_path="TESTS/unit/$(echo "$module" | sed 's|/||g').test.ts"
+        if [ -z "$module" ] || [ "$module" = "/" ]; then
+            test_path=""
+        fi
+
+        if [ "$first" = no ]; then
+            echo "," >> "$file"
+        fi
+        first=no
+
+        cat >> "$file" << FEATUREEOF
+    {
+      "id": "$id",
+      "name": "$name",
+      "module": "$module",
+      "status": "pending",
+      "priority": "$priority",
+      "tests": ["$test_path"],
+      "assigned_to": null,
+      "notes": ""
+    }FEATUREEOF
+
+        index=$((index + 1))
+    done
+
+    # Close JSON
+    cat >> "$file" << 'EOF'
+
+  ],
+  "summary": {
+    "total": FEATURES_COUNT,
+    "pass": 0,
+    "pending": FEATURES_COUNT,
+    "blocked": 0
+  }
+}
+EOF
+
+    # Replace placeholder with actual count
+    local count=${#FEATURES[@]}
+    sed -i "s/FEATURES_COUNT/$count/g" "$file"
+
+    success "Created: FEATURES.json with $count features"
+}
+
+# =============================================================================
+# Generate PROGRESS.md
+# =============================================================================
+
+generate_progress() {
+    local file="$PROJECT_DIR/PROGRESS.md"
+    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    local feature_count=${#FEATURES[@]}
+
+    info "Generating PROGRESS.md..."
+
+    cat > "$file" << PROGRESSEOF
+# $PROJECT_NAME - 开发进度
+
+## 项目信息
+
+| 字段 | 值 |
+|------|-----|
+| 项目名称 | $PROJECT_NAME |
+| 初始化日期 | $timestamp |
+| 当前阶段 | 初始化完成 |
+| 版本 | 0.1.0 |
+
+## 阶段
+
+### Phase 0: 初始化 ✅
+- [x] 需求分析
+- [x] 生成 SPEC.md
+- [x] 生成 FEATURES.json
+- [x] 初始化项目结构
+
+### Phase 1: 开发
+- [ ] 核心功能开发
+  - [ ] （从 FEATURES.json 中选择下一个任务）
+
+### Phase 2: 测试
+- [ ] 单元测试
+- [ ] 集成测试
+- [ ] E2E测试
+
+### Phase 3: 发布
+- [ ] 文档完善
+- [ ] 多平台测试
+- [ ] 发布
+
+## 当前冲刺 (Sprint)
+
+**Sprint**: Sprint 1
+**目标**: 完成核心功能开发
+**状态**: 待开始
+
+## 进度日志
+
+### $timestamp - 初始化
+| 时间 | 操作 | Agent |
+|------|------|-------|
+| $timestamp | 项目初始化 | AgentFlow Initializer |
+
+## 阻塞项
+无
+
+## 待人工Review
+无
+
+## 检查点
+
+| 检查点 | 日期 | 状态 | 摘要 |
+|--------|------|------|------|
+| CP-000 | $timestamp | 完成 | 项目初始化 |
+
+## 统计
+
+| 指标 | 值 |
+|------|-----|
+| 总功能数 | $feature_count |
+| 已完成 | 0 |
+| 进行中 | 0 |
+| 待开始 | $feature_count |
+| 完成率 | 0% |
+
+---
+
+*此文件由 AgentFlow Initializer v$VERSION 自动维护*
+PROGRESSEOF
+
+    success "Created: PROGRESS.md"
 }
 
 # =============================================================================
@@ -73,1163 +713,66 @@ create_directory() {
 # =============================================================================
 
 main() {
-    local project_dir="${1:-.}"
-
     echo ""
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}"                                                                  "  AgentFlow Initializer v${SCRIPT_VERSION}"
-    echo -e "${CYAN}║${NC}"                                          "Reusable Framework for Long-Running Agents"
+    echo -e "${CYAN}║${NC}"                                          "AgentFlow Initializer v$VERSION"
+    echo -e "${CYAN}║${NC}"                         "智能项目初始化 + 需求驱动的规格生成"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    # Step 1: Check prerequisites
-    section "Step 1: Checking Prerequisites"
-    check_prerequisites
-
-    # Step 2: Create directory structure
-    section "Step 2: Creating Directory Structure"
-    create_directory_structure "$project_dir"
-
-    # Step 3: Create Git infrastructure
-    section "Step 3: Initializing Git"
-    init_git "$project_dir"
-
-    # Step 4: Create core artifacts
-    section "Step 4: Creating Core Artifacts"
-    create_artifacts "$project_dir"
-
-    # Step 5: Create Supervisor Agent instructions
-    section "Step 5: Creating Supervisor Agent Instructions"
-    create_supervisor_instructions "$project_dir"
-
-    # Step 6: Create trigger mechanism
-    section "Step 6: Creating Trigger Mechanism"
-    create_trigger_mechanism "$project_dir"
-
-    # Step 7: Create CI/CD configuration
-    section "Step 7: Creating CI/CD Configuration"
-    create_cicd_config "$project_dir"
-
-    # Step 8: Create checkpoint
-    section "Step 8: Creating Initial Checkpoint"
-    create_checkpoint "$project_dir"
-
-    # Step 9: Initial commit
-    section "Step 9: Creating Initial Commit"
-    create_initial_commit "$project_dir"
-
-    # Summary
-    print_summary "$project_dir"
-}
-
-# =============================================================================
-# Step Implementations
-# =============================================================================
-
-check_prerequisites() {
-    local missing=0
-
-    check_command git || missing=1
-    check_command node || missing=1
-    check_command npm || missing=1
-
-    if [ $missing -eq 1 ]; then
-        log_error "Missing prerequisites"
-        exit 1
-    fi
-
-    log_success "All prerequisites met"
-}
-
-create_directory_structure() {
-    local base="$1"
-    local dirs=(
-        "$base/.github/workflows"
-        "$base/.agentflow"
-        "$base/CHECKPOINTS"
-        "$base/TESTS/unit"
-        "$base/TESTS/e2e"
-    )
-
-    for dir in "${dirs[@]}"; do
-        create_directory "$dir"
-    done
-
-    log_success "Directory structure created"
-}
-
-init_git() {
-    local base="$1"
-    cd "$base"
-
-    if [ ! -d ".git" ]; then
-        log_info "Initializing git repository..."
-        git init
-        git checkout -b develop 2>/dev/null || git branch -M develop
-        log_success "Git repository initialized"
-    else
-        log_info "Git repository already exists"
-    fi
-}
-
-create_artifacts() {
-    local base="$1"
-    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-    # Create SPEC.md
-    create_spec_md "$base" "$timestamp"
-
-    # Create FEATURES.json
-    create_features_json "$base" "$timestamp"
-
-    # Create PROGRESS.md
-    create_progress_md "$base" "$timestamp"
-
-    # Create README if not exists
-    if [ ! -f "$base/README.md" ]; then
-        create_readme "$base"
-    fi
-
-    log_success "Core artifacts created"
-}
-
-create_spec_md() {
-    local base="$1"
-    local timestamp="$2"
-    local spec_file="$base/SPEC.md"
-
-    if [ -f "$spec_file" ]; then
-        log_info "SPEC.md already exists, skipping"
-        return
-    fi
-
-    cat > "$spec_file" << SPECEOF
-# Project Specification
-
-## Metadata
-- **Project Name**: $(basename "$base")
-- **Version**: 0.1.0
-- **Created**: ${timestamp}
-- **Last Updated**: ${timestamp}
-
-## 1. Project Overview
-[Describe the project purpose and goals]
-
-## 2. Technical Stack
-[List the technical stack]
-
-## 3. Architecture
-[Describe the system architecture]
-
-## 4. Functionality
-[Describe core functionality]
-
-## 5. Quality Standards
-- Test coverage ≥ 80%
-- All public APIs have TypeScript types
-- Pass linting
-- All commits pass typecheck
-
-## 6. Exit Criteria
-Project is complete when:
-1. All P0/P1 features have status="pass" in FEATURES.json
-2. Test coverage ≥ 80%
-3. All tests pass
-4. No open P0/P1 bugs
-
-## 7. Supervisor Loop
-See SUPERVISOR.md for the agent execution loop.
-SPECEOF
-
-    log_info "Created: SPEC.md"
-}
-
-create_features_json() {
-    local base="$1"
-    local timestamp="$2"
-    local features_file="$base/FEATURES.json"
-
-    if [ -f "$features_file" ]; then
-        log_info "FEATURES.json already exists, skipping"
-        return
-    fi
-
-    cat > "$features_file" << FEATURESEOF
-{
-  "version": "0.1.0",
-  "created": "${timestamp}",
-  "updated": "${timestamp}",
-  "features": [],
-  "summary": {
-    "total": 0,
-    "pass": 0,
-    "pending": 0,
-    "blocked": 0
-  },
-  "_template": {
-    "feature": {
-      "id": "unique-id",
-      "name": "Feature name",
-      "module": "path/to/module",
-      "status": "pending",
-      "priority": "P0|P1|P2",
-      "tests": [],
-      "assigned_to": null,
-      "notes": ""
-    }
-  }
-}
-FEATURESEOF
-
-    log_info "Created: FEATURES.json"
-}
-
-create_progress_md() {
-    local base="$1"
-    local timestamp="$2"
-    local progress_file="$base/PROGRESS.md"
-
-    if [ -f "$progress_file" ]; then
-        log_info "PROGRESS.md already exists, skipping"
-        return
-    fi
-
-    cat > "$progress_file" << PROGRESSEOF
-# Development Progress
-
-## Project Info
-- **Project**: $(basename "$base")
-- **Init Date**: ${timestamp}
-- **Current Phase**: Init
-
-## Phases
-### Phase 0: Initialization
-- [x] Run init.sh - ${timestamp}
-- [x] Create artifacts
-- [x] Setup CI/CD
-
-### Phase 1: Development
-- [ ] [In progress]
-
-### Phase 2: Testing
-- [ ]
-
-### Phase 3: Release
-- [ ]
-
-## Sprint
-**Current Sprint**: Sprint 1
-**Goal**: Complete core functionality
-**Status**: Not started
-
-## Log
-
-### ${timestamp} - Initialization
-| Time | Action | Agent |
-|------|--------|-------|
-| ${timestamp} | Project initialized | init.sh |
-
-## Blockers
-None
-
-## Pending Reviews
-None
-
-## Checkpoints
-| ID | Date | Status | Summary |
-|----|------|--------|---------|
-| CP-000 | ${timestamp} | Init | Project initialized |
-
-## Statistics
-- **Total Features**: 0
-- **Completed**: 0
-- **In Progress**: 0
-- **Pending**: 0
-- **Completion**: 0%
-
----
-*Auto-maintained by AgentFlow Framework*
-PROGRESSEOF
-
-    log_info "Created: PROGRESS.md"
-}
-
-create_readme() {
-    local base="$1"
-
-    cat > "$base/README.md" << READMEEOF
-# $(basename "$base")
-
-## Project Status
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-## Overview
-[Describe the project]
-
-## Quick Start
-\`\`\`bash
-# Development
-npm install
-npm run dev
-
-# Build
-npm run build
-
-# Test
-npm test
-\`\`\`
-
-## Documentation
-- [SPEC.md](./SPEC.md) - Project specification
-- [FEATURES.json](./FEATURES.json) - Feature tracking
-- [SUPERVISOR.md](./SUPERVISOR.md) - Agent instructions
-
-## License
-MIT
-READMEEOF
-
-    log_info "Created: README.md"
-}
-
-# =============================================================================
-# Supervisor Agent Instructions
-# =============================================================================
-
-create_supervisor_instructions() {
-    local base="$1"
-    local supervisor_file="$base/SUPERVISOR.md"
-
-    cat > "$supervisor_file" << 'SUPERVISOREOF'
-# Supervisor Agent Instructions
-
-## Role
-You are the **Supervisor Agent** for this project. Your role is to orchestrate the development process by:
-1. Reading FEATURES.json to find next task
-2. Assigning tasks to coding agents
-3. Validating quality (run tests)
-4. Updating FEATURES.json status
-5. Updating PROGRESS.md
-6. Creating checkpoints periodically
-
-## Core Loop
-
-```
-WHILE NOT exit_conditions_met:
-    1. Read FEATURES.json for pending features
-    2. Select next feature by priority (P0 > P1 > P2)
-    3. Assign to available coding agent
-    4. Wait for agent to complete
-    5. Validate quality:
-       - Run tests
-       - Run typecheck
-       - Check lint
-    6. IF validation passes:
-          - Update FEATURES.json status to "pass"
-          - Create git commit
-          - Update PROGRESS.md
-       ELSE:
-          - Update FEATURES.json status to "fail"
-          - Record error in PROGRESS.md
-          - Assign fix to agent
-    7. Check checkpoint timer (every 2 hours)
-    8. Check for self-correction needs
-END WHILE
-```
-
-## Exit Conditions
-
-The loop exits when ALL conditions are met:
-
-```yaml
-exit_conditions:
-  development_complete:
-    description: "All P0/P1 features are pass"
-    check: "jq '.features[] | select(.priority | IN(\"P0\",\"P1\")) | select(.status != \"pass\")' FEATURES.json | jq -s length | [ $value -eq 0 ]"
-
-  tests_complete:
-    description: "All tests pass with ≥80% coverage"
-    check: "npm test && npm run coverage | grep -E 'All files.*[8-9][0-9]%|100%'"
-
-  no_blocking_bugs:
-    description: "No open P0/P1 bugs"
-    check: "jq '.features[] | select(.status == \"bug\" and .priority | IN(\"P0\",\"P1\"))' FEATURES.json | jq -s length | [ $value -eq 0 ]"
-```
-
-## Task Assignment Protocol
-
-When assigning a task to a coding agent:
-
-1. **Check dependencies**: Ensure prerequisite features are "pass"
-2. **Provide context**: Share SPEC.md and relevant module code
-3. **Set expectations**: Clear output format and test requirements
-4. **Set deadline**: Soft deadline of 4 hours for P0, 8 hours for P1
-
-### Assignment Message Template
-
-```
-Task: {feature_name}
-Feature ID: {feature_id}
-Module: {module_path}
-Priority: {P0|P1|P2}
-Dependencies: {list of dependent feature IDs}
-
-Requirements:
-1. Implement feature according to SPEC.md
-2. Write unit tests in {test_path}
-3. Ensure typecheck passes
-4. Ensure lint passes
-
-Output:
-1. Updated code in {module_path}
-2. Tests in {test_path}
-3. Update FEATURES.json status
-4. Update PROGRESS.md with progress
-
-Exit: When tests pass and FEATURES.json is updated
-```
-
-## Self-Correction Triggers
-
-Automatically trigger self-correction when:
-
-| Trigger | Condition | Action |
-|---------|-----------|--------|
-| Stuck feature | Feature pending > 48 hours | Reassign or break into smaller tasks |
-| Repeated failures | Same feature fails 3x | Review design, potentially revise SPEC.md |
-| Quality degradation | Pass rate < 80% over 24h | Pause, review, adjust approach |
-| Scope creep | > 30% new features added | Review with human before proceeding |
-| Test coverage drop | Coverage < 80% | Prioritize test writing |
-
-## Quality Gates
-
-Before marking a feature as "pass":
-
-- [ ] Code follows project style
-- [ ] Unit tests exist and pass
-- [ ] Typecheck passes
-- [ ] Lint passes
-- [ ] FEATURES.json updated
-- [ ] PROGRESS.md updated
-- [ ] Git commit created
-
-## Checkpoint Protocol
-
-Create a checkpoint every:
-- 2 hours of development
-- After completing a feature
-- Before starting a major new section
-- When self-correction is triggered
-
-### Checkpoint Format
-
-\`\`\`json
-{
-  "id": "CP-{NNN}",
-  "timestamp": "{ISO8601}",
-  "phase": "{current_phase}",
-  "features": {
-    "total": {n},
-    "pass": {n},
-    "pending": {n},
-    "blocked": {n}
-  },
-  "git": {
-    "branch": "{branch}",
-    "commit": "{hash}",
-    "message": "{last_commit_message}"
-  },
-  "health": {
-    "test_coverage": {n},
-    "lint_errors": {n},
-    "type_errors": {n}
-  }
-}
-\`\`\`
-
-## Progress Reporting
-
-After each feature completion, update PROGRESS.md:
-
-```
-### {YYYY-MM-DD HH:MM} - Feature Completion
-| Time | Action | Agent | Result |
-|------|--------|-------|--------|
-| {time} | {feature_name} | {agent_name} | {pass|fail} |
-```
-
-## Human Intervention Points
-
-Request human intervention when:
-1. Exit conditions are met (for final approval)
-2. Self-correction fails 3 times
-3. New features requested outside original scope
-4. Significant architectural changes needed
-5. Blockers that require external decisions
-
-## Artifact Locations
-
-- SPEC.md - Project specification (read only during execution)
-- FEATURES.json - Task queue and status (read/write)
-- PROGRESS.md - Human-readable progress log (append only)
-- CHECKPOINTS/ - Periodic snapshots (create only)
-
-## Supervisor Agent Commands
-
-| Command | Action |
-|---------|--------|
-| `supervisor:start` | Begin the supervisor loop |
-| `supervisor:status` | Print current progress |
-| `supervisor:checkpoint` | Create checkpoint now |
-| `supervisor:fix {feature_id}` | Reassign feature for fixing |
-| `supervisor:pause` | Pause development |
-| `supervisor:resume` | Resume development |
-| `supervisor:exit` | Check exit conditions |
-
----
-*Generated by AgentFlow Initializer v1.0*
-SUPERVISOREOF
-
-    log_info "Created: SUPERVISOR.md"
-}
-
-# =============================================================================
-# Trigger Mechanism
-# =============================================================================
-
-create_trigger_mechanism() {
-    local base="$1"
-    local triggers_file="$base/TRIGGERS.md"
-    local hooks_dir="$base/.git/hooks"
-
-    # Create triggers documentation
-    cat > "$triggers_file" << 'TRIGGERSEOF'
-# Trigger Mechanism
-
-This document describes how the AgentFlow framework is triggered and executed.
-
-## Trigger Types
-
-### 1. Git Push Trigger (Primary)
-Automatically triggers on push to specific branches.
-
-**Setup**: `.github/workflows/ci.yml` handles this.
-
-**Behavior**:
-- On push to `develop`: Run tests, if pass → trigger Supervisor
-- On push to `main`: Run full CI, create release
-- On PR: Run tests, post results as status check
-
-### 2. Manual Trigger
-Human can manually trigger the Supervisor.
-
-```bash
-# Start supervisor
-bash .agentflow/supervisor-loop.sh start
-
-# Stop supervisor
-bash .agentflow/supervisor-loop.sh stop
-
-# Check status
-bash .agentflow/supervisor-loop.sh status
-```
-
-### 3. Scheduled Trigger (Backup)
-Cron job as backup to ensure development continues.
-
-**Schedule**: Every 6 hours (if no recent activity)
-
-## Agent Execution Flow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Git Push                                │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│              GitHub Actions (CI/CD)                          │
-│  1. Checkout code                                           │
-│  2. Install dependencies                                    │
-│  3. Run tests                                              │
-│  4. Run typecheck                                          │
-│  5. Check coverage                                         │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│           Test Results                                      │
-│  ┌─────────────────┐    ┌─────────────────┐                 │
-│  │    ALL PASS     │    │    ANY FAIL     │                 │
-│  └────────┬────────┘    └────────┬────────┘                 │
-│           │                      │                         │
-│           ▼                      ▼                         │
-│  ┌─────────────────┐    ┌─────────────────┐               │
-│  │ Trigger Agent   │    │ Post Results    │               │
-│  │ Development     │    │ Fix Required    │               │
-│  └─────────────────┘    └─────────────────┘               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Loop Control
-
-The main loop is controlled by `.agentflow/supervisor-loop.sh`:
-
-### Loop States
-
-| State | Description |
-|-------|-------------|
-| `IDLE` | Waiting for trigger |
-| `RUNNING` | Supervisor active |
-| `PAUSED` | Manually paused |
-| `DONE` | Exit conditions met |
-| `ERROR` | Unrecoverable error |
-
-### State Transitions
-
-```
-IDLE ──(push/start)──> RUNNING
-RUNNING ──(pause)──> PAUSED
-PAUSED ──(resume)──> RUNNING
-RUNNING ──(exit conditions)──> DONE
-RUNNING ──(error)──> ERROR
-ERROR ──(fix)──> RUNNING
-```
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AGENTFLOW_MODE` | `auto` | `auto` or `manual` |
-| `AGENTFLOW_INTERVAL` | `3600` | Loop check interval (seconds) |
-| `AGENTFLOW_MAX_HOURS` | `48` | Max hours per feature |
-| `AGENTFLOW_CHECKPOINT_Hours` | `2` | Hours between checkpoints |
-
-## Monitoring
-
-Monitor the loop via:
-
-1. **PROGRESS.md** - Human-readable progress
-2. **FEATURES.json** - Machine-readable status
-3. **Git log** - Agent commits with messages
-4. **GitHub Actions** - CI/CD results
-
-## Alert Conditions
-
-The loop pauses and alerts human when:
-
-- Test coverage drops below 70%
-- Same feature fails 3 times
-- No progress for 24 hours
-- Blocked features > 5
-
-## External Integrations
-
-### GitHub Issues Integration
-When a feature fails 3 times, automatically create GitHub issue:
-
-```json
-{
-  "title": "[Agent] Feature {id} repeatedly failing",
-  "body": "Feature has failed 3 times. Requires human review.",
-  "labels": ["bug", "agent-blocked"]
-}
-```
-
----
-*Generated by AgentFlow Initializer v1.0*
-TRIGGERSEOF
-
-    # Create supervisor loop script
-    create_supervisor_loop_script "$base"
-
-    log_success "Created: TRIGGERS.md and supervisor-loop.sh"
-}
-
-create_supervisor_loop_script() {
-    local base="$1"
-    local script_dir="$base/.agentflow"
-    create_directory "$script_dir"
-
-    cat > "$script_dir/supervisor-loop.sh" << 'LOOPSCRIPT'
-#!/bin/bash
-# =============================================================================
-# AgentFlow Supervisor Loop
-# This script manages the supervisor agent execution
-# =============================================================================
-
-set -e
-
-AGENTFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$AGENTFLOW_DIR")"
-STATE_FILE="$AGENTFLOW_DIR/.state"
-LOG_FILE="$AGENTFLOW_DIR/supervisor.log"
-PID_FILE="$AGENTFLOW_DIR/.pid"
-
-source "$AGENTFLOW_DIR/common.sh" 2>/dev/null || true
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
-}
-
-get_state() {
-    cat "$STATE_FILE" 2>/dev/null || echo "IDLE"
-}
-
-set_state() {
-    echo "$1" > "$STATE_FILE"
-}
-
-is_running() {
-    if [ -f "$PID_FILE" ]; then
-        local pid=$(cat "$PID_FILE")
-        if kill -0 "$pid" 2>/dev/null; then
-            return 0
+    # Check if we have all required info
+    if [ -z "$PROJECT_NAME" ] || [ -z "$PROJECT_DESC" ]; then
+        if [ "$INTERACTIVE_MODE" = yes ] || [ -t 0 ]; then
+            run_interactive
+        else
+            error "Missing required arguments. Use --interactive or provide --name and --desc"
+            error "Or run without arguments for interactive mode"
+            exit 1
         fi
     fi
-    return 1
-}
 
-start_loop() {
-    if is_running; then
-        log "Supervisor already running (PID: $(cat $PID_FILE))"
-        return 1
+    # Ensure project directory exists
+    mkdir -p "$PROJECT_DIR"
+
+    cd "$PROJECT_DIR" || exit 1
+
+    # Check if already initialized
+    if [ -f "SPEC.md" ] && [ -f "FEATURES.json" ]; then
+        warn "Project already initialized (SPEC.md and FEATURES.json exist)"
+        if confirm "覆盖现有文件?"; then
+            info "Overwriting existing files..."
+        else
+            info "Keeping existing files, skipping generation"
+            return
+        fi
     fi
 
-    log "Starting supervisor loop..."
-    set_state "RUNNING"
+    section "Generating Project Artifacts"
 
-    (
-        while [ "$(get_state)" = "RUNNING" ]; do
-            # Check exit conditions
-            if check_exit_conditions; then
-                log "Exit conditions met!"
-                set_state "DONE"
-                exit 0
-            fi
+    generate_spec
+    generate_features_json
+    generate_progress
 
-            # Find and assign next task
-            assign_next_task
+    section "Project Created"
 
-            # Sleep before next iteration
-            sleep 60
-        done
-    ) &
-
-    echo $! > "$PID_FILE"
-    log "Supervisor started (PID: $(cat $PID_FILE))"
-}
-
-stop_loop() {
-    if ! is_running; then
-        log "Supervisor not running"
-        return 1
-    fi
-
-    log "Stopping supervisor..."
-    local pid=$(cat "$PID_FILE")
-    kill "$pid" 2>/dev/null || true
-    rm -f "$PID_FILE"
-    set_state "IDLE"
-    log "Supervisor stopped"
-}
-
-status_loop() {
-    if is_running; then
-        log "Supervisor RUNNING (PID: $(cat $PID_FILE))"
-    else
-        log "Supervisor IDLE"
-    fi
-    log "Last state: $(get_state)"
-}
-
-check_exit_conditions() {
-    # Check if all P0/P1 features are pass
-    local pending=$(jq '[.features[] | select(.priority | IN("P0","P1")) | select(.status != "pass")] | length' "$PROJECT_DIR/FEATURES.json")
-
-    if [ "$pending" -eq 0 ]; then
-        return 0
-    fi
-    return 1
-}
-
-assign_next_task() {
-    # Find highest priority pending feature
-    local feature=$(jq '[.features[] | select(.status == "pending")] | sort_by(.priority) | .[0]' "$PROJECT_DIR/FEATURES.json")
-
-    if [ -z "$feature" ] || [ "$feature" = "null" ]; then
-        log "No pending features"
-        return 1
-    fi
-
-    local id=$(echo "$feature" | jq -r '.id')
-    local name=$(echo "$feature" | jq -r '.name')
-
-    log "Assigning task: $id - $name"
-
-    # Update assigned_to
-    jq ".features[] | select(.id == \"$id\") | .assigned_to = \"supervisor\"" \
-        "$PROJECT_DIR/FEATURES.json" > /tmp/features.json && \
-        mv /tmp/features.json "$PROJECT_DIR/FEATURES.json"
-
-    # Update PROGRESS.md
-    echo "| $(date '+%H:%M') | $name | Supervisor | Assigned |" >> "$PROJECT_DIR/PROGRESS.md"
-
-    return 0
-}
-
-case "${1:-start}" in
-    start)   start_loop ;;
-    stop)    stop_loop ;;
-    status)  status_loop ;;
-    *)       echo "Usage: $0 {start|stop|status}" ;;
-esac
-LOOPSCRIPT
-
-    chmod +x "$script_dir/supervisor-loop.sh"
-
-    # Create common.sh
-    cat > "$script_dir/common.sh" << 'COMMONSEOF'
-# AgentFlow Common Utilities
-
-AGENTFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$AGENTFLOW_DIR")"
-
-log_info()    { echo "[INFO] $*"; }
-log_success() { echo "[SUCCESS] $*"; }
-log_warning() { echo "[WARNING] $*"; }
-log_error()   { echo "[ERROR] $*" >&2; }
-COMMONSEOF
-
-    log_info "Created: .agentflow/supervisor-loop.sh"
-}
-
-# =============================================================================
-# CI/CD Configuration
-# =============================================================================
-
-create_cicd_config() {
-    local base="$1"
-    local workflow_dir="$base/.github/workflows"
-
-    create_directory "$workflow_dir"
-
-    # Main CI workflow
-    cat > "$workflow_dir/ci.yml" << 'CICDEOF'
-name: CI/CD
-
-on:
-  push:
-    branches: [develop, main]
-  pull_request:
-    branches: [develop, main]
-
-jobs:
-  # =============================================================================
-  # Quality Checks (Always Run)
-  # =============================================================================
-  quality:
-    name: Quality Checks
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: TypeScript type check
-        run: npm run typecheck
-
-      - name: ESLint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm test
-
-  # =============================================================================
-  # Test Coverage
-  # =============================================================================
-  coverage:
-    name: Test Coverage
-    runs-on: ubuntu-latest
-    needs: quality
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests with coverage
-        run: npm run test:coverage
-
-      - name: Check coverage threshold
-        run: |
-          COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
-          echo "Coverage: $COVERAGE%"
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "Coverage below 80%, failing"
-            exit 1
-          fi
-
-  # =============================================================================
-  # Trigger Agent Development (On push to develop)
-  # =============================================================================
-  trigger-agent:
-    name: Trigger Agent Development
-    runs-on: ubuntu-latest
-    needs: [quality, coverage]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Read FEATURES.json
-        id: features
-        run: |
-          echo "pending_features=$(jq '[.features[] | select(.status == "pending")] | length' FEATURES.json)" >> $GITHUB_OUTPUT
-          echo "total_features=$(jq '.features | length' FEATURES.json)" >> $GITHUB_OUTPUT
-
-      - name: Decision结点
-        run: |
-          echo "Pending features: ${{ steps.features.outputs.pending_features }}"
-          echo "Total features: ${{ steps.features.outputs.total_features }}"
-          # If all features are done, skip agent trigger
-          if [ "${{ steps.features.outputs.pending_features }}" -eq 0 ]; then
-            echo "All features complete, skipping agent trigger"
-            echo "all_done=true" >> $GITHUB_OUTPUT
-          else
-            echo "all_done=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Trigger Supervisor Agent
-        if: steps.features.outputs.all_done != 'true'
-        run: |
-          echo "Triggering Supervisor Agent..."
-          # In a real implementation, this would trigger the supervisor
-          # For now, we document the mechanism
-          echo "Supervisor would be triggered here"
-
-  # =============================================================================
-  # Release (On push to main)
-  # =============================================================================
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    needs: [quality, coverage]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
-          draft: true
-          prerelease: false
-
-  # =============================================================================
-  # Update Progress (Always on push)
-  # =============================================================================
-  update-progress:
-    name: Update Progress
-    runs-on: ubuntu-latest
-    if: always() && github.ref == 'refs/heads/develop'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Update PROGRESS.md
-        run: |
-          echo "### ${{ github.sha }}" >> PROGRESS.md
-          echo "| $(date) | GitHub Actions | Push: ${{ github.event_name }} |" >> PROGRESS.md
-
-      - name: Commit update
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add PROGRESS.md
-          git diff --cached --quiet || git commit -m "docs: update progress [skip ci]"
-          git push
-CICDEOF
-
-    log_info "Created: .github/workflows/ci.yml"
-}
-
-# =============================================================================
-# Checkpoint
-# =============================================================================
-
-create_checkpoint() {
-    local base="$1"
-    create_directory "$base/CHECKPOINTS"
-
-    local checkpoint_file="$base/CHECKPOINTS/CP-000-$(date +%Y%m%d-%H%M%S).json"
-    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-    cat > "$checkpoint_file" << EOF
-{
-  "id": "CP-000",
-  "timestamp": "${timestamp}",
-  "phase": "initialization",
-  "status": "complete",
-  "init_version": "${AGENTFLOW_VERSION}",
-  "features": {
-    "total": 0,
-    "pass": 0,
-    "pending": 0,
-    "blocked": 0
-  },
-  "git": {
-    "branch": "develop",
-    "commit": "$(git rev-parse HEAD 2>/dev/null || echo 'initial')",
-    "message": "Initial commit"
-  },
-  "health": {
-    "test_coverage": 0,
-    "lint_errors": 0,
-    "type_errors": 0
-  },
-  "artifacts": [
-    "SPEC.md",
-    "FEATURES.json",
-    "PROGRESS.md",
-    "SUPERVISOR.md",
-    "TRIGGERS.md"
-  ]
-}
-EOF
-
-    log_success "Created checkpoint: $(basename $checkpoint_file)"
-}
-
-# =============================================================================
-# Initial Commit
-# =============================================================================
-
-create_initial_commit() {
-    cd "$base"
-
-    # Create .gitignore if not exists
-    if [ ! -f ".gitignore" ]; then
-        cat > .gitignore << 'GITIGNORE'
-node_modules/
-bin/
-dist/
-*.log
-.env
-.env.local
-.DS_Store
-*.db
-*.db-wal
-*.db-shm
-.clawtools/
-.agentflow/
-coverage/
-GITIGNORE
-    fi
-
-    git add -A
-
-    if git diff --cached --quiet; then
-        log_info "No changes to commit"
-        return
-    fi
-
-    git commit -m "$(cat <<'EOF'
-feat: Initialize AgentFlow project
-
-This commit initializes the project with the AgentFlow framework for
-long-running agent development.
-
-Created artifacts:
-- SPEC.md: Project specification
-- FEATURES.json: Feature tracking
-- PROGRESS.md: Progress logging
-- SUPERVISOR.md: Agent instructions with loop
-- TRIGGERS.md: Trigger mechanism
-- .github/workflows/ci.yml: CI/CD pipeline
-
-Based on Anthropic's "Effective Harnesses for Long-Running Agents"
-
-Co-Authored-By: AgentFlow Initializer v1.0
-EOF
-)"
-
-    log_success "Initial commit: $(git log --oneline -1)"
-}
-
-# =============================================================================
-# Summary
-# =============================================================================
-
-print_summary() {
-    local base="$1"
-    local rel_base=$(basename "$base")
-
+    echo -e "${GREEN}✓ 项目初始化完成！${NC}"
     echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║${NC}"                            "  Initialization Complete!"
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}项目名称:${NC} $PROJECT_NAME"
+    echo -e "${CYAN}功能数量:${NC} ${#FEATURES[@]}"
+    echo -e "${CYAN}技术栈:${NC} ${TECH_STACK[*]:-默认}"
     echo ""
-    echo -e "${CYAN}Project:${NC} $rel_base"
-    echo -e "${CYAN}Location:${NC} $(cd "$base" && pwd)"
+    echo -e "${CYAN}生成的文件:${NC}"
+    echo -e "  ├── ${GREEN}SPEC.md${NC} - 项目规格说明书"
+    echo -e "  ├── ${GREEN}FEATURES.json${NC} - 功能追踪列表"
+    echo -e "  └── ${GREEN}PROGRESS.md${NC} - 进度日志"
     echo ""
-    echo -e "${CYAN}Created Artifacts:${NC}"
-    echo -e "  ├── ${GREEN}SPEC.md${NC}              - Project specification"
-    echo -e "  ├── ${GREEN}FEATURES.json${NC}         - Feature tracking"
-    echo -e "  ├── ${GREEN}PROGRESS.md${NC}           - Progress logging"
-    echo -e "  ├── ${GREEN}SUPERVISOR.md${NC}         - Agent instructions (with loop)"
-    echo -e "  ├── ${GREEN}TRIGGERS.md${NC}           - Trigger mechanism"
-    echo -e "  ├── ${GREEN}.agentflow/${NC}           - Supervisor loop script"
-    echo -e "  └── ${GREEN}.github/workflows/ci.yml${NC} - CI/CD configuration"
-    echo ""
-    echo -e "${CYAN}Next Steps:${NC}"
-    echo -e "  1. Review SPEC.md and adjust project details"
-    echo -e "  2. Add features to FEATURES.json"
-    echo -e "  3. Start supervisor: ${YELLOW}bash .agentflow/supervisor-loop.sh start${NC}"
-    echo -e "  4. Or use GitHub Actions: push to develop branch"
-    echo ""
-    echo -e "${CYAN}Exit Conditions:${NC}"
-    echo -e "  • All P0/P1 features status='pass'"
-    echo -e "  • Test coverage ≥ 80%"
-    echo -e "  • All tests pass"
-    echo -e "  • No open P0/P1 bugs"
+    echo -e "${YELLOW}下一步:${NC}"
+    echo -e "  1. 审查 SPEC.md 确认项目目标"
+    echo -e "  2. 审查 FEATURES.json 确认功能范围"
+    echo -e "  3. 启动开发: bash .agentflow/supervisor-loop.sh start"
     echo ""
 }
 
 # Run
-main "${@}"
+parse_args "$@"
+main
