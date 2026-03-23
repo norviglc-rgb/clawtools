@@ -1458,6 +1458,43 @@ cmd_start() {
     log_success "Started (PID: $(cat $PID_FILE))"
 }
 
+cmd_resume() {
+    log_info "Resume mode: Checking for incomplete tasks..."
+
+    # Check for in_progress features from previous run
+    if command -v jq &> /dev/null && [ -f "$PROJECT_DIR/FEATURES.json" ]; then
+        local in_progress=$(jq '[.features[] | select(.status == "in_progress")] | length' "$PROJECT_DIR/FEATURES.json" 2>/dev/null || echo "0")
+        if [ "$in_progress" -gt 0 ]; then
+            log_warn "Found $in_progress in_progress feature(s) from previous run"
+            log_info "Resetting to pending for retry..."
+
+            # Reset in_progress to pending
+            jq '[.features[] | if .status == "in_progress" then .status = "pending" else . end]' "$PROJECT_DIR/FEATURES.json" > "$PROJECT_DIR/FEATURES.json.tmp" 2>/dev/null
+            mv "$PROJECT_DIR/FEATURES.json.tmp" "$PROJECT_DIR/FEATURES.json"
+        fi
+    fi
+
+    # Also check state file
+    if [ -f "$STATE_FILE" ]; then
+        local prev_state=$(cat "$STATE_FILE")
+        if [ "$prev_state" = "RUNNING" ]; then
+            log_info "Previous state was RUNNING - clearing state"
+            set_state "IDLE"
+        fi
+    fi
+
+    # Clean up any stale PID file
+    if is_running; then
+        local stale_pid=$(cat "$PID_FILE" 2>/dev/null)
+        log_warn "Stale process detected (PID: $stale_pid), cleaning up..."
+        kill "$stale_pid" 2>/dev/null || true
+        rm -f "$PID_FILE"
+    fi
+
+    log_info "Starting fresh with clean state..."
+    cmd_start
+}
+
 cmd_stop() {
     if ! is_running; then
         log_warn "Not running"
@@ -1492,6 +1529,9 @@ case "${1:-start}" in
     start)
         cmd_start
         ;;
+    resume)
+        cmd_resume
+        ;;
     stop)
         cmd_stop
         ;;
@@ -1502,7 +1542,7 @@ case "${1:-start}" in
         cmd_checkpoint
         ;;
     *)
-        echo "Usage: $0 {start|stop|status|checkpoint}"
+        echo "Usage: $0 {start|resume|stop|status|checkpoint}"
         exit 1
         ;;
 esac
@@ -3163,7 +3203,7 @@ jobs:
 CICDEOF
     info "Created: .github/workflows/ci.yml"
 
-    # Create dedicated Supervisor workflow
+    # Create dedicated Supervisor workflow with retry and recovery support
     cat > "$workflow_dir/supervisor.yml" << 'SUPERVISOREEOF'
 name: Supervisor Agent
 
@@ -3177,12 +3217,25 @@ on:
       commit:
         description: 'Commit SHA'
         required: false
+      resume:
+        description: 'Resume from checkpoint (true/false)'
+        required: false
+        default: 'false'
+  # Scheduled backup trigger - runs hourly to ensure supervision continues
+  schedule:
+    - cron: '0 * * * *'
+
+env:
+  SUPERVISOR_TIMEOUT: 120
 
 jobs:
   supervisor:
     name: Run Supervisor
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: ${{ env.SUPERVISOR_TIMEOUT || 120 }}
+    concurrency:
+      group: supervisor-run
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -3199,24 +3252,51 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Determine resume mode
+        id: resume_check
+        run: |
+          if [ "${{ inputs.resume || 'false' }}" == "true" ] || [ -f .agentflow/.state ] && grep -q "RUNNING" .agentflow/.state 2>/dev/null; then
+            echo "resume_mode=true" >> $GITHUB_OUTPUT
+            echo "Mode: RESUME from checkpoint"
+          else
+            echo "resume_mode=false" >> $GITHUB_OUTPUT
+            echo "Mode: FRESH start"
+          fi
+
       - name: Run Supervisor Loop
         run: |
           echo "═══════════════════════════════════════════════════════════"
           echo "  Supervisor Agent - Automated Development Loop"
           echo "═══════════════════════════════════════════════════════════"
           echo ""
-          echo "Trigger: ${{ inputs.trigger || 'manual' }}"
+          echo "Trigger: ${{ inputs.trigger || 'schedule' }}"
           echo "Commit: ${{ inputs.commit || github.sha }}"
+          echo "Resume: ${{ inputs.resume || 'false' }}"
           echo ""
 
-          # Start supervisor loop
-          bash .agentflow/supervisor-loop.sh start
+          # Start supervisor loop with optional resume
+          if [ "${{ steps.resume_check.outputs.resume_mode }}" == "true" ]; then
+            bash .agentflow/supervisor-loop.sh resume
+          else
+            bash .agentflow/supervisor-loop.sh start
+          fi
 
-      - name: Checkpoint
+      - name: Create Checkpoint (Success)
+        if: success()
         run: |
           mkdir -p CHECKPOINTS
-          cp FEATURES.json CHECKPOINTS/$(date +%Y%m%d-%H%M%S)-FEATURES.json
-          echo "✓ Checkpoint created"
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          cp FEATURES.json CHECKPOINTS/${TIMESTAMP}-FEATURES.json
+          echo "✓ Success checkpoint created at ${TIMESTAMP}"
+
+      - name: Create Failure Checkpoint
+        if: failure()
+        run: |
+          mkdir -p CHECKPOINTS
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          cp FEATURES.json CHECKPOINTS/${TIMESTAMP}-FEATURES-FAILED.json
+          echo "::error::Supervisor failed - checkpoint created for recovery"
+          echo "✓ Failure checkpoint: CHECKPOINTS/${TIMESTAMP}-FEATURES-FAILED.json"
 
       - name: Commit Progress
         if: success()
@@ -3239,8 +3319,56 @@ jobs:
             TOTAL=$(jq '.features | length' FEATURES.json)
             PASS=$(jq '[.features[] | select(.status == "pass")] | length' FEATURES.json)
             PENDING=$(jq '[.features[] | select(.status == "pending")] | length' FEATURES.json)
-            echo "Features: $PASS/$TOTAL completed, $PENDING pending"
+            IN_PROGRESS=$(jq '[.features[] | select(.status == "in_progress")] | length' FEATURES.json)
+            echo "Features: $PASS/$TOTAL completed, $IN_PROGRESS in progress, $PENDING pending"
+
+            # Check if all done
+            if [ "$PENDING" -eq 0 ] && [ "$IN_PROGRESS" -eq 0 ]; then
+              echo ""
+              echo "🎉 All features completed!"
+            fi
           fi
+
+  # Failure Recovery Job - triggers when supervisor fails
+  recovery:
+    name: Recovery Handler
+    runs-on: ubuntu-latest
+    needs: [supervisor]
+    if: failure()
+    steps:
+      - name: Analyze Failure
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "  Supervisor Failed - Analyzing"
+          echo "═══════════════════════════════════════════════════════════"
+
+          # Find latest checkpoint
+          if [ -d CHECKPOINTS ]; then
+            LATEST=$(ls -t CHECKPOINTS/*.json 2>/dev/null | head -1)
+            if [ -n "$LATEST" ]; then
+              echo "Latest checkpoint: $LATEST"
+              FAILED_COUNT=$(ls -t CHECKPOINTS/*-FAILED.json 2>/dev/null | head -1 | wc -l)
+              echo "Failed checkpoints: $FAILED_COUNT"
+
+              # If more than 3 consecutive failures, stop retrying
+              if [ "$FAILED_COUNT" -gt 3 ]; then
+                echo "::error::Too many consecutive failures (>$FAILED_COUNT). Manual intervention required."
+                echo "all_done=true" >> $GITHUB_OUTPUT
+              else
+                echo "Will retry on next trigger..."
+                echo "all_done=false" >> $GITHUB_OUTPUT
+              fi
+            fi
+          fi
+
+      - name: Notify via Commit
+        if: needs.supervisor.outputs.all_done != 'true'
+        run: |
+          git config user.name "Supervisor Agent"
+          git config user.email "supervisor@agentflow.dev"
+          git add -A
+          git diff --cached --quiet || git commit -m "⚠️ supervisor failed - will retry [skip ci]" || true
+          git push || true
 SUPERVISOREEOF
     info "Created: .github/workflows/supervisor.yml (agent triggering)"
 }

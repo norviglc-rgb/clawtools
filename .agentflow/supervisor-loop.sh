@@ -291,6 +291,43 @@ cmd_start() {
     log_success "Started (PID: $(cat $PID_FILE))"
 }
 
+cmd_resume() {
+    log_info "Resume mode: Checking for incomplete tasks..."
+
+    # Check for in_progress features from previous run
+    if command -v jq &> /dev/null && [ -f "$PROJECT_DIR/FEATURES.json" ]; then
+        local in_progress=$(jq '[.features[] | select(.status == "in_progress")] | length' "$PROJECT_DIR/FEATURES.json" 2>/dev/null || echo "0")
+        if [ "$in_progress" -gt 0 ]; then
+            log_warn "Found $in_progress in_progress feature(s) from previous run"
+            log_info "Resetting to pending for retry..."
+
+            # Reset in_progress to pending
+            jq '[.features[] | if .status == "in_progress" then .status = "pending" else . end]' "$PROJECT_DIR/FEATURES.json" > "$PROJECT_DIR/FEATURES.json.tmp" 2>/dev/null
+            mv "$PROJECT_DIR/FEATURES.json.tmp" "$PROJECT_DIR/FEATURES.json"
+        fi
+    fi
+
+    # Also check state file
+    if [ -f "$STATE_FILE" ]; then
+        local prev_state=$(cat "$STATE_FILE")
+        if [ "$prev_state" = "RUNNING" ]; then
+            log_info "Previous state was RUNNING - clearing state"
+            set_state "IDLE"
+        fi
+    fi
+
+    # Clean up any stale PID file
+    if is_running; then
+        local stale_pid=$(cat "$PID_FILE" 2>/dev/null)
+        log_warn "Stale process detected (PID: $stale_pid), cleaning up..."
+        kill "$stale_pid" 2>/dev/null || true
+        rm -f "$PID_FILE"
+    fi
+
+    log_info "Starting fresh with clean state..."
+    cmd_start
+}
+
 cmd_stop() {
     if ! is_running; then
         log_warn "Not running"
@@ -325,6 +362,9 @@ case "${1:-start}" in
     start)
         cmd_start
         ;;
+    resume)
+        cmd_resume
+        ;;
     stop)
         cmd_stop
         ;;
@@ -335,7 +375,7 @@ case "${1:-start}" in
         cmd_checkpoint
         ;;
     *)
-        echo "Usage: $0 {start|stop|status|checkpoint}"
+        echo "Usage: $0 {start|resume|stop|status|checkpoint}"
         exit 1
         ;;
 esac

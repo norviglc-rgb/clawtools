@@ -22,7 +22,9 @@
     "build": "tsc",
     "start": "node ./bin/index.js",
     "dev": "tsc && node ./bin/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests yet' && exit 0",
+    "lint": "echo 'No lint configured' && exit 0"
   },
   "dependencies": {
     "ink": "^4.4.1",
