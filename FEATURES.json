@@ -134,13 +134,14 @@
       "id": "FEAT-011",
       "name": "系统诊断",
       "module": "检测 OpenClaw 运行状态",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
       "tests": [
         "TESTS/unit/检测 OpenClaw 运行状态.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:29:43.043Z"
     },
     {
       "id": "FEAT-012",
