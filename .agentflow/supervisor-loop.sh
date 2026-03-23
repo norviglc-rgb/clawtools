@@ -284,9 +284,21 @@ select_next_task() {
         return 1
     fi
 
-    local id=$(echo "$task" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.id||'')")
-    local name=$(echo "$task" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.name||'')")
-    local priority=$(echo "$task" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.priority||'')")
+    # 使用临时文件解析 JSON，避免 Windows 上 /dev/stdin 问题
+    local tmpfile=$(mktemp)
+    echo "$task" > "$tmpfile"
+    local tmpfield=$(mktemp)
+    cat > "$tmpfield" << 'NODEEOF'
+const fs = require('fs');
+const d = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+console.log(d[process.argv[3]] || '');
+NODEEOF
+
+    local id=$(node "$tmpfield" "$tmpfile" "id")
+    local name=$(node "$tmpfield" "$tmpfile" "name")
+    local priority=$(node "$tmpfield" "$tmpfile" "priority")
+
+    rm -f "$tmpfile" "$tmpfield"
 
     if [ -z "$id" ]; then
         log_info "No pending tasks"
