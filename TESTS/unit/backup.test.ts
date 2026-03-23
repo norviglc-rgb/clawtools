@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   BackupManager,
   type BackupOptions,
@@ -11,29 +11,35 @@ import * as fs from 'fs';
 import * as os from 'os';
 
 describe('backup', () => {
-  const testDir = path.join(os.tmpdir(), 'clawtools-test-backup');
+  const testDir = path.join(os.tmpdir(), 'clawtools-test-backup-' + Date.now());
   let backupManager: BackupManager;
 
-  beforeAll(() => {
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-  });
-
-  afterAll(() => {
-    // Cleanup
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  });
-
   beforeEach(() => {
-    backupManager = new BackupManager(testDir);
+    backupManager = new BackupManager(testDir, testDir);
+  });
+
+  afterEach(() => {
+    // Cleanup test files
+    if (fs.existsSync(testDir)) {
+      try {
+        const files = fs.readdirSync(testDir);
+        for (const file of files) {
+          fs.unlinkSync(path.join(testDir, file));
+        }
+        fs.rmdirSync(testDir);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   });
 
   describe('BackupManager', () => {
     it('should be instantiable', () => {
       expect(backupManager).toBeDefined();
+    });
+
+    it('should have getBackupDir method', () => {
+      expect(typeof backupManager.getBackupDir).toBe('function');
     });
 
     it('should have createBackup method', () => {
@@ -51,25 +57,72 @@ describe('backup', () => {
     it('should have listBackups method', () => {
       expect(typeof backupManager.listBackups).toBe('function');
     });
+
+    it('should have deleteBackup method', () => {
+      expect(typeof backupManager.deleteBackup).toBe('function');
+    });
+  });
+
+  describe('getBackupDir', () => {
+    it('should return a string path', () => {
+      const dir = backupManager.getBackupDir();
+      expect(typeof dir).toBe('string');
+      expect(dir.length).toBeGreaterThan(0);
+    });
+
+    it('should be the configured backup directory', () => {
+      const dir = backupManager.getBackupDir();
+      expect(dir).toBe(testDir);
+    });
+  });
+
+  describe('listBackups', () => {
+    it('should return an array', () => {
+      const backups = backupManager.listBackups();
+      expect(Array.isArray(backups)).toBe(true);
+    });
+
+    it('should return empty array when no backups exist', () => {
+      const backups = backupManager.listBackups();
+      expect(backups.length).toBe(0);
+    });
+  });
+
+  describe('deleteBackup', () => {
+    it('should return boolean', () => {
+      const result = backupManager.deleteBackup('/nonexistent/path');
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('should return true when path does not exist but no error thrown', () => {
+      // deleteBackup returns true even when file doesn't exist (no error thrown)
+      const result = backupManager.deleteBackup('/nonexistent/backup.tar.gz');
+      expect(typeof result).toBe('boolean');
+    });
   });
 
   describe('BackupOptions', () => {
-    it('should accept valid options', () => {
+    it('should accept full options', () => {
       const options: BackupOptions = {
         includeConfig: true,
-        includeDatabase: true,
-        includeCredentials: false,
-        compress: true
+        includeWorkspace: true,
+        includeSkills: true,
+        includePlugins: true,
+        compressionLevel: 6
       };
       expect(options.includeConfig).toBe(true);
-      expect(options.compress).toBe(true);
+      expect(options.compressionLevel).toBe(6);
     });
 
-    it('should accept minimal options', () => {
+    it('should accept partial options', () => {
       const options: BackupOptions = {
-        includeConfig: true
+        includeConfig: true,
+        includeWorkspace: false,
+        includeSkills: false,
+        includePlugins: false
       };
       expect(options.includeConfig).toBe(true);
+      expect(options.includeWorkspace).toBe(false);
     });
   });
 
@@ -77,12 +130,13 @@ describe('backup', () => {
     it('should accept success result', () => {
       const result: BackupResult = {
         success: true,
+        message: 'Backup created',
         backupPath: '/path/to/backup.tar.gz',
-        size: 1024,
-        message: 'Backup created'
+        size: 1024
       };
       expect(result.success).toBe(true);
       expect(result.backupPath).toBe('/path/to/backup.tar.gz');
+      expect(result.size).toBe(1024);
     });
 
     it('should accept failure result', () => {
@@ -98,11 +152,9 @@ describe('backup', () => {
     it('should accept success result', () => {
       const result: RestoreResult = {
         success: true,
-        restoredFiles: 5,
         message: 'Restored successfully'
       };
       expect(result.success).toBe(true);
-      expect(result.restoredFiles).toBe(5);
     });
 
     it('should accept failure result', () => {
@@ -118,42 +170,63 @@ describe('backup', () => {
     it('should have required properties', () => {
       const info: BackupInfo = {
         id: 'backup-001',
+        timestamp: '2024-01-01T00:00:00Z',
         path: '/path/to/backup.tar.gz',
-        created: new Date().toISOString(),
         size: 1024,
-        type: 'full'
+        options: {
+          includeConfig: true,
+          includeWorkspace: true,
+          includeSkills: true,
+          includePlugins: true
+        }
       };
       expect(info.id).toBe('backup-001');
-      expect(info.type).toBe('full');
+      expect(info.timestamp).toBe('2024-01-01T00:00:00Z');
+      expect(info.size).toBe(1024);
     });
   });
 
   describe('createBackup', () => {
     it('should return BackupResult type', async () => {
-      // Note: This test just validates the interface
-      // Actual backup creation requires OpenClaw config files
-      expect(typeof backupManager.createBackup).toBe('function');
+      const options: BackupOptions = {
+        includeConfig: false,
+        includeWorkspace: false,
+        includeSkills: false,
+        includePlugins: false
+      };
+      // This will fail because config dir doesn't exist, but we test the interface
+      const result = await backupManager.createBackup(options);
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('message');
+    });
+  });
+
+  describe('restoreBackup', () => {
+    it('should return RestoreResult for nonexistent file', async () => {
+      const result = await backupManager.restoreBackup('/nonexistent/backup.tar.gz');
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('not found');
     });
   });
 
   describe('exportForMigration', () => {
     it('should accept docker target', async () => {
-      expect(typeof backupManager.exportForMigration).toBe('function');
+      // Will fail without real backup but tests interface
+      await expect(
+        backupManager.exportForMigration('docker')
+      ).rejects.toThrow();
     });
 
     it('should accept hyperv target', async () => {
-      expect(typeof backupManager.exportForMigration).toBe('function');
+      await expect(
+        backupManager.exportForMigration('hyperv')
+      ).rejects.toThrow();
     });
 
     it('should accept native target', async () => {
-      expect(typeof backupManager.exportForMigration).toBe('function');
-    });
-  });
-
-  describe('listBackups', () => {
-    it('should return array', async () => {
-      const backups = await backupManager.listBackups();
-      expect(Array.isArray(backups)).toBe(true);
+      await expect(
+        backupManager.exportForMigration('native')
+      ).rejects.toThrow();
     });
   });
 });

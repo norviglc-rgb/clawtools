@@ -2,9 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   getOpenClawInstallCommand,
   getAvailableVersions,
+  installNode,
+  uninstallOpenClaw,
   type InstallChannel,
   type InstallMethod,
-  type InstallOptions
+  type InstallOptions,
+  type InstallResult
 } from '../../core/installer';
 
 describe('installer', () => {
@@ -19,6 +22,11 @@ describe('installer', () => {
       versions.forEach(v => {
         expect(typeof v).toBe('string');
       });
+    });
+
+    it('should return at least one version', () => {
+      const versions = getAvailableVersions();
+      expect(versions.length).toBeGreaterThan(0);
     });
   });
 
@@ -37,16 +45,34 @@ describe('installer', () => {
       expect(cmd).toContain('npm');
     });
 
-    it('should handle different channels', () => {
-      const stableCmd = getOpenClawInstallCommand({ method: 'npm', channel: 'stable' });
-      const betaCmd = getOpenClawInstallCommand({ method: 'npm', channel: 'beta' });
-      expect(typeof stableCmd).toBe('string');
-      expect(typeof betaCmd).toBe('string');
+    it('should include script for script method', () => {
+      const cmd = getOpenClawInstallCommand({ method: 'script', channel: 'stable' });
+      expect(cmd).toContain('curl') || expect(cmd).toContain('wget');
+    });
+
+    it('should handle stable channel', () => {
+      const cmd = getOpenClawInstallCommand({ method: 'npm', channel: 'stable' });
+      expect(typeof cmd).toBe('string');
+    });
+
+    it('should handle beta channel', () => {
+      const cmd = getOpenClawInstallCommand({ method: 'npm', channel: 'beta' });
+      expect(typeof cmd).toBe('string');
+    });
+
+    it('should handle dev channel', () => {
+      const cmd = getOpenClawInstallCommand({ method: 'npm', channel: 'dev' });
+      expect(typeof cmd).toBe('string');
+    });
+
+    it('should handle version option', () => {
+      const cmd = getOpenClawInstallCommand({ method: 'npm', channel: 'stable', version: '1.0.0' });
+      expect(typeof cmd).toBe('string');
     });
   });
 
   describe('InstallOptions type', () => {
-    it('should accept valid install options', () => {
+    it('should accept full options', () => {
       const options: InstallOptions = {
         method: 'npm',
         channel: 'stable',
@@ -57,6 +83,15 @@ describe('installer', () => {
       expect(options.channel).toBe('stable');
       expect(options.version).toBe('1.0.0');
       expect(options.global).toBe(true);
+    });
+
+    it('should accept minimal options', () => {
+      const options: InstallOptions = {
+        method: 'npm',
+        channel: 'stable'
+      };
+      expect(options.method).toBe('npm');
+      expect(options.channel).toBe('stable');
     });
 
     it('should accept script method', () => {
@@ -73,6 +108,28 @@ describe('installer', () => {
         channel: 'dev'
       };
       expect(options.method).toBe('docker');
+    });
+  });
+
+  describe('InstallResult type', () => {
+    it('should accept success result', () => {
+      const result: InstallResult = {
+        success: true,
+        message: 'Installed successfully',
+        version: '1.0.0',
+        path: '/usr/local/bin'
+      };
+      expect(result.success).toBe(true);
+      expect(result.version).toBe('1.0.0');
+      expect(result.path).toBe('/usr/local/bin');
+    });
+
+    it('should accept failure result', () => {
+      const result: InstallResult = {
+        success: false,
+        message: 'Installation failed'
+      };
+      expect(result.success).toBe(false);
     });
   });
 
@@ -107,6 +164,37 @@ describe('installer', () => {
     it('should accept docker method', () => {
       const method: InstallMethod = 'docker';
       expect(method).toBe('docker');
+    });
+  });
+
+  describe('installNode', () => {
+    it('should accept win32 platform', async () => {
+      const result = await installNode('win32');
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('message');
+    });
+
+    it('should accept linux platform', async () => {
+      const result = await installNode('linux');
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('message');
+    });
+
+    it('should accept darwin platform', async () => {
+      const result = await installNode('darwin');
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('message');
+    });
+
+    it('should reject unsupported platform', async () => {
+      const result = await installNode('freebsd');
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('uninstallOpenClaw', () => {
+    it('should be a function', () => {
+      expect(typeof uninstallOpenClaw).toBe('function');
     });
   });
 });
