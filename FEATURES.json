@@ -7,7 +7,7 @@
       "id": "FEAT-001",
       "name": "API Key 安全存储",
       "module": "加密存储到本地 SQLite",
-      "status": "pass",
+      "status": "pending",
       "priority": "P0",
       "tests": [
         "TESTS/unit/加密存储到本地 SQLite.test.ts"
@@ -20,7 +20,7 @@
       "id": "FEAT-002",
       "name": "Provider 预设",
       "module": "OpenAI、MiniMax、智谱(GLM) 等",
-      "status": "pass",
+      "status": "pending",
       "priority": "P0",
       "tests": [
         "TESTS/unit/OpenAI、MiniMax、智谱(GLM) 等.test.ts"
@@ -33,7 +33,7 @@
       "id": "FEAT-003",
       "name": "一键安装",
       "module": "支持 stable/beta/dev 版本通道",
-      "status": "pass",
+      "status": "pending",
       "priority": "P0",
       "tests": [
         "TESTS/unit/支持 stablebetadev 版本通道.test.ts"
@@ -58,13 +58,14 @@
       "id": "FEAT-005",
       "name": "备份配置",
       "module": "打包配置文件",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
       "tests": [
         "TESTS/unit/打包配置文件.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:26:09.705Z"
     },
     {
       "id": "FEAT-006",
