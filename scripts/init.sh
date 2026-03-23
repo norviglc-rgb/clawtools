@@ -1212,28 +1212,23 @@ json_read() {
         return 1
     fi
 
-    # 解析查询并执行
-    node -e "
+    # 使用临时脚本文件执行，避免 bash 引号转义问题
+    local tmpfile=$(mktemp)
+    cat > "$tmpfile" << 'NODEOF'
 const fs = require('fs');
-const data = JSON.parse(fs.readFileSync('$file', 'utf8'));
-const q = '$query';
+const data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const q = process.argv[3];
 
-// 支持: .features | length
-// 支持: .features[] | select(.status == \"pending\") | length
-// 支持: .features[] | select(.status == \"pending\") | select(.priority == \"P0\" or .priority == \"P1\") | length
-// 支持: .features[] | select(.status == \"pending\") | sort_by(.priority) | .[0]
-// 支持: .features[] | select(.id == \"ID\") | .status
-const statusMatch = q.match(/select\(.*?\.status == \\\"([^\\\"]+)\\\"\)/);
-const priorityOrMatch = q.match(/select\(.*?\.priority == \\\"([^\\\"]+)\\\" or .*?\.priority == \\\"([^\\\"]+)\\\"\)/);
+const statusMatch = q.match(/select\(.*?\.status == "([^"]+)"\)/);
+const priorityOrMatch = q.match(/select\(.*?\.priority == "([^"]+)" or .*?\.priority == "([^"]+)"\)/);
 const sortMatch = q.match(/sort_by\(.*?\)/);
 const firstMatch = q.includes('.[0]');
 const lengthOnly = q.includes('| length');
-const idMatch = q.match(/select\(.*?\.id == \\\"([^\\\"]+)\\\"\)/);
+const idMatch = q.match(/select\(.*?\.id == "([^"]+)"\)/);
 
 if (q.includes('.features | length')) {
     console.log(data.features.length);
 } else if (priorityOrMatch && lengthOnly) {
-    // Handle: select(.priority == \"P0\" or .priority == \"P1\") | length
     const p1 = priorityOrMatch[1];
     const p2 = priorityOrMatch[2];
     const status = statusMatch ? statusMatch[1] : null;
@@ -1259,25 +1254,21 @@ if (q.includes('.features | length')) {
     const id = idMatch[1];
     const feature = data.features.find(f => f.id === id);
     if (feature) {
-        // 提取具体字段
-        if (q.includes('.status')) {
-            console.log(feature.status);
-        } else if (q.includes('.id')) {
-            console.log(feature.id);
-        } else if (q.includes('.name')) {
-            console.log(feature.name);
-        } else if (q.includes('.priority')) {
-            console.log(feature.priority);
-        } else {
-            console.log(JSON.stringify(feature));
-        }
+        if (q.includes('.status')) console.log(feature.status);
+        else if (q.includes('.id')) console.log(feature.id);
+        else if (q.includes('.name')) console.log(feature.name);
+        else if (q.includes('.priority')) console.log(feature.priority);
+        else console.log(JSON.stringify(feature));
     } else {
         console.log('null');
     }
 } else {
     console.log('');
 }
-" 2>/dev/null
+NODEOF
+
+    node "$tmpfile" "$file" "$query" 2>/dev/null
+    rm -f "$tmpfile"
 }
 
 # 更新 JSON 文件中的值
@@ -1299,28 +1290,32 @@ json_update() {
         return 1
     fi
 
-    # Node.js 后备
+    # Node.js 后备 - 使用临时文件
     if ! has_node; then
         return 1
     fi
 
-    node -e "
+    local tmpfile=$(mktemp)
+    cat > "$tmpfile" << 'NODEOF'
 const fs = require('fs');
-const data = JSON.parse(fs.readFileSync('$file', 'utf8'));
-const id = '$id';
-const field = '$field';
-const value = '$value';
+const data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const id = process.argv[3];
+const field = process.argv[4];
+const value = process.argv[5];
 
 const feature = data.features.find(f => f.id === id);
 if (feature) {
     feature[field] = value;
     feature.updated_at = new Date().toISOString();
-    fs.writeFileSync('$file', JSON.stringify(data, null, 2));
+    fs.writeFileSync(process.argv[2], JSON.stringify(data, null, 2));
     console.log('OK');
 } else {
     process.exit(1);
 }
-" 2>/dev/null
+NODEOF
+
+    node "$tmpfile" "$file" "$id" "$field" "$value" 2>/dev/null
+    rm -f "$tmpfile"
 }
 
 # =============================================================================

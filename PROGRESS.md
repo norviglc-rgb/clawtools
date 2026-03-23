@@ -5,7 +5,7 @@
 | 字段 | 值 |
 |------|-----|
 | 项目名称 | ClawTools 需求说明书 |
-| 初始化日期 | 2026-03-23T19:09:01Z |
+| 初始化日期 | 2026-03-23T19:12:14Z |
 | 当前阶段 | 初始化完成 |
 | 版本 | 0.1.0 |
 
@@ -39,19 +39,10 @@
 
 ## 进度日志
 
-### 2026-03-24T03:10:00Z - Supervisor Loop 执行
+### 2026-03-23T19:12:14Z - 初始化
 | 时间 | 操作 | Agent |
 |------|------|-------|
-| 2026-03-24T03:10:00Z | 配置测试框架 (vitest) | Claude Agent |
-| 2026-03-24T03:10:00Z | 编写 detector.test.ts | Claude Agent |
-| 2026-03-24T03:10:00Z | 编写 configurator.test.ts | Claude Agent |
-| 2026-03-24T03:10:00Z | 验证 FEAT-001, FEAT-002, FEAT-010 | Claude Agent |
-| 2026-03-24T03:10:00Z | 更新 FEATURES.json 和 PROGRESS.md | Claude Agent |
-
-### 2026-03-23T19:09:01Z - 初始化
-| 时间 | 操作 | Agent |
-|------|------|-------|
-| 2026-03-23T19:09:01Z | 项目初始化 | AgentFlow Initializer |
+| 2026-03-23T19:12:14Z | 项目初始化 | AgentFlow Initializer |
 
 ## 阻塞项
 无
@@ -63,25 +54,17 @@
 
 | 检查点 | 日期 | 状态 | 摘要 |
 |--------|------|------|------|
-| CP-000 | 2026-03-23T19:09:01Z | 完成 | 项目初始化 |
+| CP-000 | 2026-03-23T19:12:14Z | 完成 | 项目初始化 |
 
 ## 统计
 
 | 指标 | 值 |
 |------|-----|
 | 总功能数 | 13 |
-| 已完成 | 3 |
+| 已完成 | 0 |
 | 进行中 | 0 |
-| 待开始 | 10 |
-| 完成率 | 23% |
-
-## 已完成功能
-
-| Feature | Name | Tests |
-|---------|------|-------|
-| FEAT-001 | API Key 安全存储 | TESTS/unit/configurator.test.ts |
-| FEAT-002 | Provider 预设 | TESTS/unit/configurator.test.ts |
-| FEAT-010 | 环境检测 | TESTS/unit/detector.test.ts |
+| 待开始 | 13 |
+| 完成率 | 0% |
 
 ---
 

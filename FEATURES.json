@@ -1,28 +1,28 @@
 {
   "version": "0.1.0",
-  "created": "2026-03-23T19:08:57Z",
-  "updated": "2026-03-24T03:10:00Z",
+  "created": "2026-03-23T19:12:09Z",
+  "updated": "2026-03-23T19:12:09Z",
   "features": [
     {
       "id": "FEAT-001",
       "name": "API Key 安全存储",
       "module": "加密存储到本地 SQLite",
-      "status": "pass",
+      "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/configurator.test.ts"],
+      "tests": ["TESTS/unit/加密存储到本地 SQLite.test.ts"],
       "assigned_to": null,
-      "notes": "Configurator encryption tests pass"
+      "notes": ""
     }
 ,
     {
       "id": "FEAT-002",
       "name": "Provider 预设",
       "module": "OpenAI、MiniMax、智谱(GLM) 等",
-      "status": "pass",
+      "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/configurator.test.ts"],
+      "tests": ["TESTS/unit/OpenAI、MiniMax、智谱(GLM) 等.test.ts"],
       "assigned_to": null,
-      "notes": "Provider presets (OpenAI, MiniMax, GLM) validated via configurator tests"
+      "notes": ""
     }
 ,
     {
@@ -106,11 +106,11 @@
       "id": "FEAT-010",
       "name": "环境检测",
       "module": "检测 Node.js、平台、防火墙、公网IP等",
-      "status": "pass",
+      "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/detector.test.ts"],
+      "tests": ["TESTS/unit/检测 Node.js、平台、防火墙、公网IP等.test.ts"],
       "assigned_to": null,
-      "notes": "Environment detection tests pass"
+      "notes": ""
     }
 ,
     {
@@ -149,8 +149,8 @@
   ],
   "summary": {
     "total": 13,
-    "pass": 3,
-    "pending": 10,
+    "pass": 0,
+    "pending": 13,
     "blocked": 0
   },
   "bugs": [],
