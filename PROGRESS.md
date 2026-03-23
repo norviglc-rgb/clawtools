@@ -86,3 +86,5 @@
 | 03:26 | FEAT-011 | Supervisor | Assigned |
 | 03:26 | FEAT-011 | Supervisor | Assigned |
 | 03:26 | FEAT-004 | Supervisor | Assigned |
+| 03:26 | FEAT-004 | Supervisor | Assigned |
+| 03:26 | FEAT-006 | Supervisor | Assigned |
