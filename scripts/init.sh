@@ -1184,6 +1184,134 @@ CHECKPOINT_INTERVAL=7200  # 2小时
 source "$AGENTFLOW_DIR/common.sh"
 
 # =============================================================================
+# jq/node 兼容层
+# =============================================================================
+
+has_jq() {
+    command -v jq &> /dev/null
+}
+
+has_node() {
+    command -v node &> /dev/null
+}
+
+# 读取 JSON 文件中的值 (使用 node.js)
+json_read() {
+    local query="$1"
+    local file="$2"
+
+    if has_jq; then
+        jq "$query" "$file" 2>/dev/null
+        return $?
+    fi
+
+    # Node.js 后备实现
+    if ! has_node; then
+        echo ""
+        return 1
+    fi
+
+    # 解析查询并执行
+    node -e "
+const fs = require('fs');
+const data = JSON.parse(fs.readFileSync('$file', 'utf8'));
+const q = '$query';
+
+// 支持: .features | length
+// 支持: .features[] | select(.status == \"pending\") | length
+// 支持: .features[] | select(.status == \"pending\") | sort_by(.priority) | .[0]
+// 支持: .features[] | select(.id == \"ID\") | .status
+const statusMatch = q.match(/select\(.*?\.status == \\\"([^\\\"]+)\\\"\)/);
+const sortMatch = q.match(/sort_by\(.*?\)/);
+const firstMatch = q.includes('.[0]');
+const lengthOnly = q.includes('| length');
+const idMatch = q.match(/select\(.*?\.id == \\\"([^\\\"]+)\\\"\)/);
+
+if (q.includes('.features | length')) {
+    console.log(data.features.length);
+} else if (statusMatch && lengthOnly) {
+    const status = statusMatch[1];
+    const results = data.features.filter(f => f.status === status);
+    console.log(results.length);
+} else if (statusMatch && sortMatch && firstMatch) {
+    const status = statusMatch[1];
+    const results = data.features.filter(f => f.status === status);
+    const sorted = results.sort((a, b) => {
+        const pa = a.priority || 'P2';
+        const pb = b.priority || 'P2';
+        if (pa !== pb) return pa.localeCompare(pb);
+        return 0;
+    });
+    console.log(JSON.stringify(sorted[0] || null));
+} else if (idMatch) {
+    const id = idMatch[1];
+    const feature = data.features.find(f => f.id === id);
+    if (feature) {
+        // 提取具体字段
+        if (q.includes('.status')) {
+            console.log(feature.status);
+        } else if (q.includes('.id')) {
+            console.log(feature.id);
+        } else if (q.includes('.name')) {
+            console.log(feature.name);
+        } else if (q.includes('.priority')) {
+            console.log(feature.priority);
+        } else {
+            console.log(JSON.stringify(feature));
+        }
+    } else {
+        console.log('null');
+    }
+} else {
+    console.log('');
+}
+" 2>/dev/null
+}
+
+# 更新 JSON 文件中的值
+json_update() {
+    local id="$1"
+    local field="$2"
+    local value="$3"
+    local file="$4"
+
+    if has_jq; then
+        local updated=$(jq --arg id "$id" --arg field "$field" --arg value "$value" \
+            '(if .features[] | select(.id == $id) | has($field) == false then .features[] | select(.id == $id) | .[$field] = $value else . end) |
+            (.features[] | select(.id == $id) | .[$field] = $value)' \
+            "$file" 2>/dev/null)
+        if [ -n "$updated" ]; then
+            echo "$updated" > "$file"
+            return 0
+        fi
+        return 1
+    fi
+
+    # Node.js 后备
+    if ! has_node; then
+        return 1
+    fi
+
+    node -e "
+const fs = require('fs');
+const data = JSON.parse(fs.readFileSync('$file', 'utf8'));
+const id = '$id';
+const field = '$field';
+const value = '$value';
+
+const feature = data.features.find(f => f.id === id);
+if (feature) {
+    feature[field] = value;
+    feature.updated_at = new Date().toISOString();
+    fs.writeFileSync('$file', JSON.stringify(data, null, 2));
+    console.log('OK');
+} else {
+    process.exit(1);
+}
+" 2>/dev/null
+}
+
+# =============================================================================
 # 日志
 # =============================================================================
 
@@ -1227,14 +1355,14 @@ is_running() {
 # =============================================================================
 
 check_exit_conditions() {
-    # 需要 jq
-    if ! command -v jq &> /dev/null; then
-        log_warn "jq not found, skipping exit check"
+    # 检查是否有 pending 的 P0/P1
+    if ! has_jq && ! has_node; then
+        log_warn "Neither jq nor node.js available, skipping exit check"
         return 1
     fi
 
-    # 检查是否有 pending 的 P0/P1
-    local pending=$(jq '[.features[] | select(.priority | IN("P0","P1")) | select(.status == "pending")] | length' "$PROJECT_DIR/FEATURES.json" 2>/dev/null || echo "999")
+    local pending=$(json_read '.features[] | select(.status == "pending") | select(.priority == "P0" or .priority == "P1") | length' "$PROJECT_DIR/FEATURES.json")
+    pending=${pending:-999}
 
     if [ "$pending" -eq 0 ]; then
         log_success "All P0/P1 features completed!"
@@ -1310,16 +1438,21 @@ EOF
 
 select_next_task() {
     # 找最高优先级的 pending 任务
-    local task=$(jq '[.features[] | select(.status == "pending")] | sort_by(.priority) | .[0]' "$PROJECT_DIR/FEATURES.json" 2>/dev/null)
+    local task=$(json_read '.features[] | select(.status == "pending") | sort_by(.priority) | .[0]' "$PROJECT_DIR/FEATURES.json")
 
-    if [ -z "$task" ] || [ "$task" = "null" ]; then
+    if [ -z "$task" ] || [ "$task" = "null" ] || [ "$task" = "" ]; then
         log_info "No pending tasks"
         return 1
     fi
 
-    local id=$(echo "$task" | jq -r '.id')
-    local name=$(echo "$task" | jq -r '.name')
-    local priority=$(echo "$task" | jq -r '.priority')
+    local id=$(echo "$task" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.id||'')")
+    local name=$(echo "$task" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.name||'')")
+    local priority=$(echo "$task" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.priority||'')")
+
+    if [ -z "$id" ]; then
+        log_info "No pending tasks"
+        return 1
+    fi
 
     log_info "Selected task: $id ($name) [Priority: $priority]"
     echo "$id|$name|$priority"
@@ -1369,16 +1502,7 @@ update_task_status() {
     local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     # 更新 FEATURES.json
-    if command -v jq &> /dev/null; then
-        local updated=$(jq --arg id "$feature_id" --arg status "$status" --arg time "$timestamp" \
-            '(if .features[] | select(.id == $id) | has("updated_at") == false then .features[] | select(.id == $id) | .updated_at = $time else . end) |
-            (.features[] | select(.id == $id) | .status = $status | .updated_at = $time)' \
-            "$PROJECT_DIR/FEATURES.json" 2>/dev/null)
-
-        if [ -n "$updated" ]; then
-            echo "$updated" > "$PROJECT_DIR/FEATURES.json"
-        fi
-    fi
+    json_update "$feature_id" "status" "$status" "$PROJECT_DIR/FEATURES.json"
 
     log_info "Updated $feature_id → $status"
 }
@@ -1462,15 +1586,24 @@ cmd_resume() {
     log_info "Resume mode: Checking for incomplete tasks..."
 
     # Check for in_progress features from previous run
-    if command -v jq &> /dev/null && [ -f "$PROJECT_DIR/FEATURES.json" ]; then
-        local in_progress=$(jq '[.features[] | select(.status == "in_progress")] | length' "$PROJECT_DIR/FEATURES.json" 2>/dev/null || echo "0")
+    if [ -f "$PROJECT_DIR/FEATURES.json" ]; then
+        local in_progress=$(json_read '.features[] | select(.status == "in_progress") | length' "$PROJECT_DIR/FEATURES.json")
+        in_progress=${in_progress:-0}
         if [ "$in_progress" -gt 0 ]; then
             log_warn "Found $in_progress in_progress feature(s) from previous run"
             log_info "Resetting to pending for retry..."
 
-            # Reset in_progress to pending
-            jq '[.features[] | if .status == "in_progress" then .status = "pending" else . end]' "$PROJECT_DIR/FEATURES.json" > "$PROJECT_DIR/FEATURES.json.tmp" 2>/dev/null
-            mv "$PROJECT_DIR/FEATURES.json.tmp" "$PROJECT_DIR/FEATURES.json"
+            # Reset in_progress to pending using node
+            if has_node; then
+                node -e "
+const fs = require('fs');
+const data = JSON.parse(fs.readFileSync('$PROJECT_DIR/FEATURES.json', 'utf8'));
+data.features.forEach(f => {
+    if (f.status === 'in_progress') f.status = 'pending';
+});
+fs.writeFileSync('$PROJECT_DIR/FEATURES.json', JSON.stringify(data, null, 2));
+"
+            fi
         fi
     fi
 
