@@ -531,22 +531,24 @@ generate_features_spec_md() {
 }
 
 generate_project_structure_md() {
-    echo '```'"
-echo 'project/'
-echo '├── cli/              # 命令行界面'
-echo '│   └── index.tsx     # TUI入口'
-echo '├── core/             # 核心业务逻辑'
-echo '│   └── index.ts      # 核心模块'
-echo '├── config/           # 配置'
-echo '├── db/               # 数据库层'
-echo '├── i18n/             # 国际化'
-echo '├── tests/            # 测试'
-echo '│   ├── unit/         # 单元测试'
-echo '│   └── e2e/          # 端到端测试'
-echo '├── docs/             # 文档'
-echo '├── scripts/          # 脚本'
-echo '└── package.json'
-echo '```'
+    cat << 'STRUCTEOF'
+\`\`\`
+project/
+├── cli/              # 命令行界面
+│   └── index.tsx     # TUI入口
+├── core/             # 核心业务逻辑
+│   └── index.ts      # 核心模块
+├── config/           # 配置
+├── db/               # 数据库层
+├── i18n/             # 国际化
+├── tests/            # 测试
+│   ├── unit/         # 单元测试
+│   └── e2e/          # 端到端测试
+├── docs/             # 文档
+├── scripts/          # 脚本
+└── package.json
+\`\`\`
+STRUCTEOF
 }
 
 generate_architecture_md() {
@@ -632,7 +634,8 @@ generate_features_json() {
       "tests": ["$test_path"],
       "assigned_to": null,
       "notes": ""
-    }FEATUREEOF
+    }
+FEATUREEOF
 
         index=$((index + 1))
     done
@@ -757,102 +760,451 @@ main() {
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    # Check if we have all required info
-    if [ -z "$PROJECT_NAME" ] || [ -z "$PROJECT_DESC" ]; then
-        if [ "$INTERACTIVE_MODE" = yes ] || [ -t 0 ]; then
-            run_interactive
-        else
-            error "Missing required arguments. Use --interactive or provide --name and --desc"
-            error "Or run without arguments for interactive mode"
-            exit 1
-        fi
-    fi
-
-    # Ensure project directory exists
+    # Step 1: Ensure project directory exists
     mkdir -p "$PROJECT_DIR"
-
     cd "$PROJECT_DIR" || exit 1
 
-    # Check if already initialized
-    local already_initialized=false
-    local has_spec=false
-    local has_features=false
-
-    [ -f "SPEC.md" ] && has_spec=true
-    [ -f "FEATURES.json" ] && has_features=true
-
-    if $has_spec || $has_features; then
-        already_initialized=true
-    fi
+    # Step 2: Check if already initialized (idempotency FIRST!)
+    check_initialized_status
 
     # Handle idempotency based on INIT_MODE
-    case "$INIT_MODE" in
-        "init-only")
-            if $already_initialized; then
-                info "Project already initialized (SPEC.md=$has_spec, FEATURES.json=$has_features)"
-                info "Use --force to overwrite, --update to merge, or --skip-existing to skip"
-                info "Skipping generation..."
-                echo ""
-                echo "Current project status:"
-                if $has_spec; then
-                    local proj_name=$(grep "^# " SPEC.md | head -1 | sed 's/^# //')
-                    echo "  - Project: $proj_name"
-                fi
-                if [ -f "FEATURES.json" ]; then
-                    local feat_count=$(jq '.features | length' FEATURES.json 2>/dev/null || echo "N/A")
-                    local pass_count=$(jq '[.features[] | select(.status == "pass")] | length' FEATURES.json 2>/dev/null || echo "0")
-                    echo "  - Features: $pass_count / $feat_count completed"
-                fi
-                echo ""
-                return 0
-            fi
-            ;;
-        "force")
-            if $already_initialized; then
-                warn "Force mode: Overwriting existing files..."
-            fi
-            ;;
-        "update")
-            if ! $already_initialized; then
-                warn "No existing project found, treating as fresh init"
-            else
-                info "Update mode: Will merge new features with existing (keeping progress)"
-            fi
-            ;;
-        "skip")
-            if [ -f "SPEC.md" ]; then
-                info "SKIP mode: Project already initialized, skipping..."
-                return 0
-            fi
-            ;;
-    esac
+    handle_idempotency
 
+    # If we get here, we need to proceed with initialization
+    # Step 3: Gather requirements (in priority order)
+    gather_requirements
+
+    # Step 4: Generate artifacts
     section "Generating Project Artifacts"
-
     generate_spec
     generate_features_json
     generate_progress
 
-    section "Project Created"
+    # Step 5: Create framework files (SUPERVISOR.md, TRIGGERS.md, etc.)
+    create_framework_files
 
-    echo -e "${GREEN}✓ 项目初始化完成！${NC}"
+    # Step 6: Create CI/CD config
+    create_cicd_config
+
+    # Step 7: Create initial checkpoint and commit
+    create_checkpoint
+    create_initial_commit
+
+    # Step 8: Print summary
+    print_summary
+}
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+check_initialized_status() {
+    HAS_SPEC=false
+    HAS_FEATURES=false
+    HAS_PROGRESS=false
+
+    [ -f "SPEC.md" ] && HAS_SPEC=true
+    [ -f "FEATURES.json" ] && HAS_FEATURES=true
+    [ -f "PROGRESS.md" ] && HAS_PROGRESS=true
+
+    ALREADY_INITIALIZED=false
+    if $HAS_SPEC || $HAS_FEATURES; then
+        ALREADY_INITIALIZED=true
+    fi
+}
+
+handle_idempotency() {
+    if ! $ALREADY_INITIALIZED; then
+        return 0  # Fresh init, proceed
+    fi
+
+    # Project already initialized
+    info "Project already initialized:"
+    [ $HAS_SPEC = true ] && info "  - SPEC.md exists"
+    [ $HAS_FEATURES = true ] && info "  - FEATURES.json exists"
+    [ $HAS_PROGRESS = true ] && info "  - PROGRESS.md exists"
+
+    case "$INIT_MODE" in
+        "init-only"|"skip")
+            print_current_status
+            echo ""
+            info "Skipping initialization (idempotent mode)."
+            info "Use --force to overwrite or --update to merge."
+            exit 0
+            ;;
+        "force")
+            warn "Force mode: Will overwrite existing files..."
+            warn "This will reset ALL progress!"
+            if ! confirm "Continue with force?"; then
+                info "Aborted."
+                exit 0
+            fi
+            ;;
+        "update")
+            info "Update mode: Will merge with existing..."
+            if confirm "Load existing project info?"; then
+                load_existing_project
+            fi
+            ;;
+    esac
+}
+
+print_current_status() {
     echo ""
-    echo -e "${CYAN}项目名称:${NC} $PROJECT_NAME"
-    echo -e "${CYAN}功能数量:${NC} ${#FEATURES[@]}"
-    echo -e "${CYAN}技术栈:${NC} ${TECH_STACK[*]:-默认}"
+    echo -e "${CYAN}Current project status:${NC}"
+    if $HAS_SPEC; then
+        if [ -f "SPEC.md" ]; then
+            local proj_name=$(grep "^# " SPEC.md 2>/dev/null | head -1 | sed 's/^# //')
+            [ -z "$proj_name" ] && proj_name="Unknown"
+            echo "  - Project: $proj_name"
+        fi
+    fi
+    if $HAS_FEATURES && [ -f "FEATURES.json" ]; then
+        if command -v jq &> /dev/null; then
+            local feat_count=$(jq '.features | length' FEATURES.json 2>/dev/null || echo "?")
+            local pass_count=$(jq '[.features[] | select(.status == "pass")] | length' FEATURES.json 2>/dev/null || echo "0")
+            echo "  - Features: $pass_count / $feat_count completed"
+        else
+            echo "  - Features: (jq not available)"
+        fi
+    fi
+    echo ""
+}
+
+load_existing_project() {
+    if [ -f "SPEC.md" ]; then
+        info "Loading project info from SPEC.md..."
+        # Extract what we can - this is read-only
+    fi
+    if [ -f "FEATURES.json" ] && command -v jq &> /dev/null; then
+        info "Features from existing FEATURES.json will be preserved"
+        info "Use --force to replace them entirely"
+    fi
+}
+
+gather_requirements() {
+    # Priority: 1. Command args > 2. REQUIREMENTS.md > 3. Interactive
+
+    if [ -n "$PROJECT_NAME" ] && [ -n "$PROJECT_DESC" ]; then
+        info "Using provided arguments..."
+    elif [ -f "REQUIREMENTS.md" ]; then
+        info "Found REQUIREMENTS.md, auto-loading..."
+        load_requirements_from_file
+    elif [ "$INTERACTIVE_MODE" = yes ] || is_interactive; then
+        info "No arguments provided, entering interactive mode..."
+        run_interactive
+    else
+        # Try REQUIREMENTS.md as fallback, then fail gracefully
+        if [ -f "REQUIREMENTS.md" ]; then
+            info "Auto-loading from REQUIREMENTS.md..."
+            load_requirements_from_file
+        else
+            error "No project info provided and no REQUIREMENTS.md found."
+            error "Please provide --name and --desc, or create REQUIREMENTS.md"
+            error "Or run with --interactive for guided setup."
+            exit 1
+        fi
+    fi
+}
+
+is_interactive() {
+    # Check if stdin is a terminal AND if we have a display (for GUI prompts)
+    # In non-interactive scripts, we want to fall back to file-based or fail
+    if [ -t 0 ]; then
+        return 0  # true - stdin is a terminal
+    fi
+    # Also check if FORCE_INTERACTIVE is set
+    [ "$FORCE_INTERACTIVE" = yes ]
+}
+
+load_requirements_from_file() {
+    if [ ! -f "REQUIREMENTS.md" ]; then
+        error "REQUIREMENTS.md not found"
+        return 1
+    fi
+
+    info "Reading from REQUIREMENTS.md..."
+
+    # Extract project name from first H1
+    if [ -z "$PROJECT_NAME" ]; then
+        PROJECT_NAME=$(grep "^# " REQUIREMENTS.md 2>/dev/null | head -1 | sed 's/^# //' | xargs)
+    fi
+
+    # Extract description from Overview section
+    if [ -z "$PROJECT_DESC" ]; then
+        local desc=$(awk '/^## [0-9]+\. / && !/^## [0-9]+\. Non-functional/ {found=1; next} found && /^$/ {exit} found' REQUIREMENTS.md | tail -n +2 | head -5 | xargs)
+        [ -z "$desc" ] && desc="See REQUIREMENTS.md for details"
+        PROJECT_DESC="$desc"
+    fi
+
+    # Auto-detect features from requirements
+    if [ ${#FEATURES[@]} -eq 0 ]; then
+        auto_parse_features
+    fi
+
+    # Auto-detect tech stack
+    if [ ${#TECH_STACK[@]} -eq 0 ]; then
+        auto_detect_tech_stack
+    fi
+
+    # Auto-detect platforms
+    if [ ${#PLATFORMS[@]} -eq 0 ]; then
+        auto_detect_platforms
+    fi
+
+    info "Loaded: $PROJECT_NAME"
+    [ ${#FEATURES[@]} -gt 0 ] && info "Found ${#FEATURES[@]} features"
+}
+
+auto_parse_features() {
+    # Parse markdown tables for features
+    # Look for | Feature | Description | Priority | patterns
+    while IFS= read -r line; do
+        if [[ "$line" =~ \|\ ([^\|]+)\ \|\ ([^\|]+)\ \|\ (P[0-2]) ]]; then
+            local name="${BASH_REMATCH[1]}"
+            local module="${BASH_REMATCH[2]}"
+            local priority="${BASH_REMATCH[3]}"
+
+            # Clean up
+            name=$(echo "$name" | xargs)
+            module=$(echo "$module" | xargs)
+            [ -z "$module" ] && module="core/"
+
+            FEATURES+=("$name|$module|$priority")
+        fi
+    done < <(grep -A 100 "^## [23]\. " REQUIREMENTS.md 2>/dev/null || true)
+
+    # Also try to parse bullet points
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^-\ \*\*(.+)\*\* ]]; then
+            local name="${BASH_REMATCH[1]}"
+            name=$(echo "$name" | xargs)
+            [ -n "$name" ] && FEATURES+=("$name|core/|P1")
+        fi
+    done < <(grep -E "^\| \|" REQUIREMENTS.md 2>/dev/null || true)
+
+    # Deduplicate
+    if [ ${#FEATURES[@]} -gt 0 ]; then
+        IFS=' ' read -ra FEATURES <<< "$(printf '%s\n' "${FEATURES[@]}" | sort -u | tr '\n' ' ')"
+    fi
+}
+
+auto_detect_tech_stack() {
+    # Check if requirements specify tech stack
+    local stack_line=$(grep -E "Node\.js|TypeScript|Ink|React|SQLite" REQUIREMENTS.md 2>/dev/null | head -5)
+
+    if echo "$stack_line" | grep -qi "node"; then
+        TECH_STACK+=("Node.js")
+    fi
+    if echo "$stack_line" | grep -qi "typescript"; then
+        TECH_STACK+=("TypeScript")
+    fi
+    if echo "$stack_line" | grep -qi "ink"; then
+        TECH_STACK+=("Ink")
+    fi
+    if echo "$stack_line" | grep -qi "sqlite"; then
+        TECH_STACK+=("SQLite")
+    fi
+
+    # Defaults if nothing found
+    [ ${#TECH_STACK[@]} -eq 0 ] && TECH_STACK=("Node.js" "TypeScript")
+}
+
+auto_detect_platforms() {
+    local plat_line=$(grep -i "platform\|Windows\|Linux\|macOS\|Docker" REQUIREMENTS.md 2>/dev/null | head -5)
+
+    for platform in "Windows" "Linux" "macOS" "WSL" "Docker"; do
+        if echo "$plat_line" | grep -qi "$platform"; then
+            PLATFORMS+=("$platform")
+        fi
+    done
+
+    # Defaults
+    [ ${#PLATFORMS[@]} -eq 0 ] && PLATFORMS=("Windows" "Linux" "macOS")
+}
+
+# =============================================================================
+# Framework Files
+# =============================================================================
+
+create_framework_files() {
+    local agentflow_dir="$PROJECT_DIR/.agentflow"
+    mkdir -p "$agentflow_dir"
+
+    # SUPERVISOR.md
+    cat > "$PROJECT_DIR/SUPERVISOR.md" << 'SUPERVISOREOF'
+# Supervisor Agent Instructions
+
+## Role
+You are the **Supervisor Agent**. Read FEATURES.json, assign tasks, validate quality, update progress.
+
+## Core Loop
+```
+WHILE NOT exit_conditions_met:
+    1. Read FEATURES.json for pending features
+    2. Select next by priority (P0 > P1 > P2)
+    3. Assign to coding agent
+    4. Validate (tests + typecheck)
+    5. Update status
+    6. Check checkpoint (every 2h)
+END WHILE
+```
+
+## Exit Conditions
+1. All P0/P1 features status="pass"
+2. Test coverage ≥ 80%
+3. All tests pass
+4. No open P0/P1 bugs
+
+## Quality Gates
+- [ ] Code follows style
+- [ ] Unit tests exist
+- [ ] Typecheck passes
+- [ ] Lint passes
+- [ ] FEATURES.json updated
+- [ ] PROGRESS.md updated
+SUPERVISOREOF
+    info "Created: SUPERVISOR.md"
+
+    # TRIGGERS.md
+    cat > "$PROJECT_DIR/TRIGGERS.md" << 'TRIGGERSEOF'
+# Trigger Mechanism
+
+## Types
+1. **Git Push** - Primary trigger
+2. **Manual** - `bash .agentflow/supervisor-loop.sh start`
+3. **Scheduled** - Cron backup (every 6h)
+
+## Loop States
+IDLE → RUNNING → PAUSED → DONE/ERROR
+
+## Exit Conditions
+- All P0/P1 pass
+- Coverage ≥ 80%
+- All tests pass
+TRIGGERSEOF
+    info "Created: TRIGGERS.md"
+
+    # supervisor-loop.sh
+    cat > "$agentflow_dir/supervisor-loop.sh" << 'LOOPSCRIPT'
+#!/bin/bash
+AGENTFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$AGENTFLOW_DIR")"
+
+log() { echo "[$(date '+%H:%M:%S')] $*"; }
+
+case "${1:-start}" in
+    start) log "Supervisor started" ;;
+    stop) log "Supervisor stopped" ;;
+    status) log "Status: IDLE" ;;
+esac
+LOOPSCRIPT
+    chmod +x "$agentflow_dir/supervisor-loop.sh"
+    info "Created: .agentflow/supervisor-loop.sh"
+}
+
+create_cicd_config() {
+    local workflow_dir="$PROJECT_DIR/.github/workflows"
+    mkdir -p "$workflow_dir"
+
+    cat > "$workflow_dir/ci.yml" << 'CICDEOF'
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+CICDEOF
+    info "Created: .github/workflows/ci.yml"
+}
+
+create_checkpoint() {
+    local checkpoint_dir="$PROJECT_DIR/CHECKPOINTS"
+    mkdir -p "$checkpoint_dir"
+
+    local cp_file="$checkpoint_dir/CP-000-$(date +%Y%m%d-%H%M%S).json"
+    cat > "$cp_file" << EOF
+{
+  "id": "CP-000",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "phase": "initialization",
+  "status": "complete"
+}
+EOF
+    info "Created checkpoint: $(basename $cp_file)"
+}
+
+create_initial_commit() {
+    cd "$PROJECT_DIR" || return 1
+
+    # Create .gitignore if missing
+    if [ ! -f ".gitignore" ]; then
+        cat > .gitignore << 'GITIGNORE'
+node_modules/
+bin/
+dist/
+*.log
+.env
+.DS_Store
+*.db
+.clawtools/
+.agentflow/
+coverage/
+GITIGNORE
+    fi
+
+    git add -A 2>/dev/null || true
+
+    if git diff --cached --quiet 2>/dev/null; then
+        info "No changes to commit"
+        return 0
+    fi
+
+    git commit -m "feat: initialize project with AgentFlow framework
+
+Generated by AgentFlow Initializer v$VERSION" 2>/dev/null || true
+    info "Git commit created"
+}
+
+print_summary() {
+    local feat_count=${#FEATURES[@]}
+    echo ""
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${NC}"                                                    "✓ 项目初始化完成"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}项目:${NC} $PROJECT_NAME"
+    echo -e "${CYAN}功能:${NC} $feat_count"
+    echo -e "${CYAN}平台:${NC} ${PLATFORMS[*]:-默认}"
     echo ""
     echo -e "${CYAN}生成的文件:${NC}"
-    echo -e "  ├── ${GREEN}SPEC.md${NC} - 项目规格说明书"
-    echo -e "  ├── ${GREEN}FEATURES.json${NC} - 功能追踪列表"
-    echo -e "  └── ${GREEN}PROGRESS.md${NC} - 进度日志"
+    echo -e "  ├── ${GREEN}SPEC.md${NC} - 项目规格"
+    echo -e "  ├── ${GREEN}FEATURES.json${NC} - 功能列表"
+    echo -e "  ├── ${GREEN}PROGRESS.md${NC} - 进度日志"
+    echo -e "  ├── ${GREEN}SUPERVISOR.md${NC} - Agent指令"
+    echo -e "  ├── ${GREEN}TRIGGERS.md${NC} - 触发机制"
+    echo -e "  └── ${GREEN}.github/workflows/ci.yml${NC} - CI/CD"
     echo ""
     echo -e "${YELLOW}下一步:${NC}"
-    echo -e "  1. 审查 SPEC.md 确认项目目标"
-    echo -e "  2. 审查 FEATURES.json 确认功能范围"
-    echo -e "  3. 启动开发: bash .agentflow/supervisor-loop.sh start"
+    echo -e "  1. 审查 SPEC.md"
+    echo -e "  2. 审查 FEATURES.json"
+    echo -e "  3. 启动: bash .agentflow/supervisor-loop.sh start"
     echo ""
 }
 
 # Run
+parse_args "$@"
 parse_args "$@"
 main
