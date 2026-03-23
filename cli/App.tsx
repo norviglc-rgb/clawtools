@@ -85,7 +85,9 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
 
-      <Text bold marginBottom={1}>Select an option:</Text>
+      <Box marginBottom={1}>
+        <Text bold>Select an option:</Text>
+      </Box>
 
       {(Object.keys(menuItems) as MenuItem[]).map((key) => {
         const item = menuItems[key];
@@ -93,13 +95,11 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
 
         return (
           <Box key={key} flexDirection="row" marginBottom={1}>
-            <Text
-              bold={isSelected}
-              inverse={isSelected}
-              width={3}
-            >
-              {item.shortcut}
-            </Text>
+            <Box width={3}>
+              <Text bold={isSelected} inverse={isSelected}>
+                {item.shortcut}
+              </Text>
+            </Box>
             <Box flexDirection="column" width={40}>
               <Text bold={isSelected}>{item.label}</Text>
               <Text dimColor>{item.description}</Text>

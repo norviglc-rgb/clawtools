@@ -100,13 +100,17 @@ export function BackupScreen() {
       {step === 'menu' && (
         <>
           <Box marginBottom={1}>
-            <Text width={3} color="cyan">[1]</Text>
+            <Box width={3}>
+              <Text color="cyan">[1]</Text>
+            </Box>
             <Text bold> Create Backup</Text>
             <Text dimColor> - Backup all OpenClaw data</Text>
           </Box>
 
           <Box marginBottom={2}>
-            <Text width={3} color="cyan">[2]</Text>
+            <Box width={3}>
+              <Text color="cyan">[2]</Text>
+            </Box>
             <Text bold> Restore</Text>
             <Text dimColor> - Restore from backup</Text>
           </Box>
@@ -116,13 +120,16 @@ export function BackupScreen() {
               <Box marginBottom={1}>
                 <Text dimColor>Recent backups:</Text>
               </Box>
-              {backups.slice(0, 5).map((backup, index) => (
-                <Box key={backup.id} marginBottom={1}>
-                  <Text dimColor>{index + 1}.</Text>
-                  <Text> {backup.filename}</Text>
-                  <Text dimColor> ({formatSize(backup.size)})</Text>
-                </Box>
-              ))}
+              {backups.slice(0, 5).map((backup, index) => {
+                const filename = backup.path.split(/[/\\]/).pop() || backup.path;
+                return (
+                  <Box key={backup.id} marginBottom={1}>
+                    <Text dimColor>{index + 1}.</Text>
+                    <Text> {filename}</Text>
+                    <Text dimColor> ({formatSize(backup.size)})</Text>
+                  </Box>
+                );
+              })}
             </>
           )}
 

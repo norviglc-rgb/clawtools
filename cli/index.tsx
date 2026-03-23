@@ -14,10 +14,10 @@ console.log(chalk.blue('║       OpenClaw Management Suite v0.1.0       ║'));
 console.log(chalk.blue('╚═══════════════════════════════════════════════╝'));
 console.log();
 
-const { Unmount } = render(React.createElement(App, { systemInfo }));
+const instance = render(React.createElement(App, { systemInfo }));
 
 process.on('SIGINT', () => {
   console.log(chalk.yellow('\n\nShutting down...'));
-  Unmount();
+  instance.unmount();
   process.exit(0);
 });

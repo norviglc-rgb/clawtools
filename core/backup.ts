@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as tar from 'tar';
-import * as AdmZip from 'adm-zip';
-import { fg } from 'fast-glob';
+import AdmZip from 'adm-zip';
+import fg from 'fast-glob';
 
 export interface BackupOptions {
   includeConfig: boolean;
@@ -143,7 +143,6 @@ export class BackupManager {
           gzip: true,
           file: backupPath,
           cwd: this.configDir,
-          level: options.compressionLevel || 6,
         },
         filesToBackup
       );

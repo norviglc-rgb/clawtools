@@ -3,7 +3,7 @@ import { Box, Text } from 'ink';
 import { DocSearch, SearchResult } from '../../core/search';
 import { getDatabase } from '../../db';
 
-type SearchStep = 'menu' | 'searching' | 'results';
+type SearchStep = 'menu' | 'searching' | 'results' | 'done';
 
 export function SearchScreen() {
   const [step, setStep] = useState<SearchStep>('menu');
@@ -115,7 +115,7 @@ export function SearchScreen() {
             <Text>Search query:</Text>
           </Box>
           <Box>
-            <Text>> {query}</Text>
+            <Text>{'>'} {query}</Text>
             <Text dimColor> █</Text>
           </Box>
           <Box marginTop={1}>
@@ -141,13 +141,17 @@ export function SearchScreen() {
         <>
           {results.length > 0 ? (
             <>
-              <Text marginBottom={1}>
-                Found {results.length} result(s):
-              </Text>
+              <Box marginBottom={1}>
+                <Text>
+                  Found {results.length} result(s):
+                </Text>
+              </Box>
               {results.map((result, index) => (
                 <Box key={result.id} marginBottom={1} flexDirection="column">
                   <Box flexDirection="row">
-                    <Text dimColor width={2}>{index + 1}.</Text>
+                    <Box width={2}>
+                      <Text dimColor>{index + 1}.</Text>
+                    </Box>
                     <Text bold color="cyan">{result.title}</Text>
                   </Box>
                   <Box paddingLeft={3} flexDirection="column">

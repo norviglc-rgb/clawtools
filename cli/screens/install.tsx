@@ -62,15 +62,16 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
       {step === 'select' && (
         <>
-          <Text marginBottom={1}>Select version channel:</Text>
+          <Box marginBottom={1}>
+            <Text>Select version channel:</Text>
+          </Box>
           {channels.map((ch) => (
             <Box key={ch.id} marginBottom={1}>
-              <Text
-                width={3}
-                color={selectedChannel === ch.id ? 'cyan' : undefined}
-              >
-                [{selectedChannel === ch.id ? 'x' : ' '}]
-              </Text>
+              <Box width={3}>
+                <Text color={selectedChannel === ch.id ? 'cyan' : undefined}>
+                  [{selectedChannel === ch.id ? 'x' : ' '}]
+                </Text>
+              </Box>
               <Text bold color={selectedChannel === ch.id ? 'cyan' : undefined}>
                 {ch.id === 'stable' ? '1' : ch.id === 'beta' ? '2' : '3'} {ch.label}
               </Text>

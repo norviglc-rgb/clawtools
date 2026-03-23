@@ -74,7 +74,7 @@ export async function installNode(platform: string): Promise<NodeInstallResult> 
 
     try {
       fs.writeFileSync(scriptPath, script, { mode: 0o755 });
-      exec(`"${scriptPath}"`, { stdio: 'inherit' });
+      exec(`"${scriptPath}"`);
       const version = execSync('node --version', { encoding: 'utf8' }).trim();
       resolve({ success: true, message: 'Node.js installed successfully', version });
     } catch (error: any) {
@@ -92,7 +92,7 @@ export function getOpenClawInstallCommand(options: InstallOptions): string {
     case 'npm':
       return `npm install -g openclaw${channel}`;
     case 'script':
-      return platform === 'win32'
+      return process.platform === 'win32'
         ? 'iwr -useb https://openclaw.ai/install.ps1 | iex'
         : 'curl -fsSL https://openclaw.ai/install.sh | bash';
     case 'docker':

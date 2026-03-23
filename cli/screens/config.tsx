@@ -100,14 +100,18 @@ export function ConfigScreen() {
 
       {step === 'menu' && (
         <>
-          <Text marginBottom={1}>Select a provider to configure:</Text>
+          <Box marginBottom={1}>
+            <Text>Select a provider to configure:</Text>
+          </Box>
           {uniqueProviders.map((providerId, index) => {
             const preset = presetProviders.find(p => p.id === providerId);
             const saved = savedProviders.find(p => p.providerId === providerId);
 
             return (
               <Box key={providerId} marginBottom={1}>
-                <Text width={3} color="cyan">{index + 1}</Text>
+                <Box width={3}>
+                  <Text color="cyan">{index + 1}</Text>
+                </Box>
                 <Text bold>{preset?.name || providerId}</Text>
                 {saved && <Text dimColor> (configured)</Text>}
               </Box>

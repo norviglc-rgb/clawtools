@@ -184,7 +184,7 @@ export class Configurator {
         timestamp: new Date().toISOString(),
         version: '1.0',
         config,
-        files: [] as string[],
+        files: [] as { name: string; content: string }[],
       };
 
       const configDir = this.configDir;

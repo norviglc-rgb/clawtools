@@ -67,9 +67,11 @@ export function DoctorScreen() {
             {results.items.map((item) => (
               <Box key={item.id} marginBottom={1} flexDirection="column">
                 <Box flexDirection="row">
-                  <Text color={getStatusColor(item.status)} width={2}>
-                    {getStatusSymbol(item.status)}
-                  </Text>
+                  <Box width={2}>
+                    <Text color={getStatusColor(item.status)}>
+                      {getStatusSymbol(item.status)}
+                    </Text>
+                  </Box>
                   <Text bold>{item.name}</Text>
                 </Box>
                 <Box paddingLeft={3} flexDirection="column">

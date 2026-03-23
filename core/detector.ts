@@ -58,7 +58,7 @@ function getPlatform(): SystemInfo['platform'] {
 function detectNode(): NodeInfo {
   try {
     const version = execSync('node --version', { encoding: 'utf8' }).trim();
-    const pathResult = execSync('where node' if process.platform === 'win32' else 'which node', { encoding: 'utf8' }).trim();
+    const pathResult = execSync(process.platform === 'win32' ? 'where node' : 'which node', { encoding: 'utf8' }).trim();
 
     const semver = require('semver');
     const meetsRequirement = semver.gte(version, '20.0.0');

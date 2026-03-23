@@ -1,6 +1,7 @@
 import { execSync, exec } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
+import * as fs from 'fs';
 import { detectSystem, checkFirewall, checkPublicIP, detectPorts, SystemInfo } from './detector';
 
 export type DiagnosticLevel = 'info' | 'warn' | 'error' | 'success';
@@ -248,7 +249,7 @@ export class Doctor {
     }
 
     const configDir = path.join(os.homedir(), '.openclaw');
-    if (path.existsSync(configDir)) {
+    if (fs.existsSync(configDir)) {
       this.addItem({
         id: 'config-dir',
         name: 'Config Directory',
