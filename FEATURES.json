@@ -7,14 +7,14 @@
       "id": "FEAT-001",
       "name": "API Key 安全存储",
       "module": "加密存储到本地 SQLite",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
       "tests": [
         "TESTS/unit/加密存储到本地 SQLite.test.ts"
       ],
       "assigned_to": null,
       "notes": "",
-      "updated_at": "2026-03-23T19:25:57.905Z"
+      "updated_at": "2026-03-23T19:26:13.070Z"
     },
     {
       "id": "FEAT-002",
