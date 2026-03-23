@@ -98,13 +98,14 @@
       "id": "FEAT-008",
       "name": "文档搜索",
       "module": "离线搜索 OpenClaw 文档",
-      "status": "pending",
+      "status": "pass",
       "priority": "P1",
       "tests": [
         "TESTS/unit/离线搜索 OpenClaw 文档.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:26:44.330Z"
     },
     {
       "id": "FEAT-009",
