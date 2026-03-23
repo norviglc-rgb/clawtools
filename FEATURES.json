@@ -20,13 +20,14 @@
       "id": "FEAT-002",
       "name": "Provider 预设",
       "module": "OpenAI、MiniMax、智谱(GLM) 等",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
       "tests": [
         "TESTS/unit/OpenAI、MiniMax、智谱(GLM) 等.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:26:02.221Z"
     },
     {
       "id": "FEAT-003",
