@@ -72,14 +72,14 @@
       "id": "FEAT-006",
       "name": "安全扫描",
       "module": "防火墙/端口检测（需用户授权）",
-      "status": "in_progress",
+      "status": "pass",
       "priority": "P1",
       "tests": [
         "TESTS/unit/防火墙端口检测（需用户授权）.test.ts"
       ],
       "assigned_to": null,
       "notes": "",
-      "updated_at": "2026-03-23T19:26:39.849Z"
+      "updated_at": "2026-03-23T19:26:40.919Z"
     },
     {
       "id": "FEAT-007",
