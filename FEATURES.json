@@ -90,7 +90,7 @@
       ],
       "assigned_to": null,
       "notes": "",
-      "updated_at": "2026-03-23T19:26:23.456Z"
+      "updated_at": "2026-03-23T19:26:27.589Z"
     },
     {
       "id": "FEAT-008",
@@ -108,13 +108,14 @@
       "id": "FEAT-009",
       "name": "版本选择",
       "module": "用户可选 OpenClaw 版本",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
       "tests": [
         "TESTS/unit/用户可选 OpenClaw 版本.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:26:27.766Z"
     },
     {
       "id": "FEAT-010",
