@@ -7,145 +7,159 @@
       "id": "FEAT-001",
       "name": "API Key 安全存储",
       "module": "加密存储到本地 SQLite",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
-      "tests": ["TESTS/unit/加密存储到本地 SQLite.test.ts"],
+      "tests": [
+        "TESTS/unit/加密存储到本地 SQLite.test.ts"
+      ],
       "assigned_to": null,
-      "notes": ""
-    }
-,
+      "notes": "",
+      "updated_at": "2026-03-23T19:25:57.905Z"
+    },
     {
       "id": "FEAT-002",
       "name": "Provider 预设",
       "module": "OpenAI、MiniMax、智谱(GLM) 等",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/OpenAI、MiniMax、智谱(GLM) 等.test.ts"],
+      "tests": [
+        "TESTS/unit/OpenAI、MiniMax、智谱(GLM) 等.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-003",
       "name": "一键安装",
       "module": "支持 stable/beta/dev 版本通道",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/支持 stablebetadev 版本通道.test.ts"],
+      "tests": [
+        "TESTS/unit/支持 stablebetadev 版本通道.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-004",
       "name": "卸载功能",
       "module": "干净卸载 OpenClaw",
       "status": "pending",
       "priority": "P1",
-      "tests": ["TESTS/unit/干净卸载 OpenClaw.test.ts"],
+      "tests": [
+        "TESTS/unit/干净卸载 OpenClaw.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-005",
       "name": "备份配置",
       "module": "打包配置文件",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/打包配置文件.test.ts"],
+      "tests": [
+        "TESTS/unit/打包配置文件.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-006",
       "name": "安全扫描",
       "module": "防火墙/端口检测（需用户授权）",
       "status": "pending",
       "priority": "P1",
-      "tests": ["TESTS/unit/防火墙端口检测（需用户授权）.test.ts"],
+      "tests": [
+        "TESTS/unit/防火墙端口检测（需用户授权）.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-007",
       "name": "恢复备份",
       "module": "从备份恢复",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/从备份恢复.test.ts"],
+      "tests": [
+        "TESTS/unit/从备份恢复.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-008",
       "name": "文档搜索",
       "module": "离线搜索 OpenClaw 文档",
       "status": "pending",
       "priority": "P1",
-      "tests": ["TESTS/unit/离线搜索 OpenClaw 文档.test.ts"],
+      "tests": [
+        "TESTS/unit/离线搜索 OpenClaw 文档.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-009",
       "name": "版本选择",
       "module": "用户可选 OpenClaw 版本",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/用户可选 OpenClaw 版本.test.ts"],
+      "tests": [
+        "TESTS/unit/用户可选 OpenClaw 版本.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-010",
       "name": "环境检测",
       "module": "检测 Node.js、平台、防火墙、公网IP等",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/检测 Node.js、平台、防火墙、公网IP等.test.ts"],
+      "tests": [
+        "TESTS/unit/检测 Node.js、平台、防火墙、公网IP等.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-011",
       "name": "系统诊断",
       "module": "检测 OpenClaw 运行状态",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/检测 OpenClaw 运行状态.test.ts"],
+      "tests": [
+        "TESTS/unit/检测 OpenClaw 运行状态.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-012",
       "name": "迁移导出",
       "module": "跨平台迁移（Docker/HyperV/原生）",
       "status": "pending",
       "priority": "P2",
-      "tests": ["TESTS/unit/跨平台迁移（DockerHyperV原生）.test.ts"],
+      "tests": [
+        "TESTS/unit/跨平台迁移（DockerHyperV原生）.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
-    }
-,
+    },
     {
       "id": "FEAT-013",
       "name": "配置模板",
       "module": "预置优化配置（付费跳过、推荐项打开）",
       "status": "pending",
       "priority": "P1",
-      "tests": ["TESTS/unit/预置优化配置（付费跳过、推荐项打开）.test.ts"],
+      "tests": [
+        "TESTS/unit/预置优化配置（付费跳过、推荐项打开）.test.ts"
+      ],
       "assigned_to": null,
       "notes": ""
     }
-
   ],
   "summary": {
     "total": 13,
