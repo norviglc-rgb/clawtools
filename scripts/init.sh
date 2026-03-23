@@ -1,17 +1,23 @@
 #!/bin/bash
 # =============================================================================
-# AgentFlow Initializer - v2.0
+# AgentFlow Initializer - v2.1
 # Intelligent project initialization with automatic SPEC and FEATURES generation
 #
 # Usage:
 #   bash init.sh                           # Interactive mode
 #   bash init.sh --name "MyProject"        # Quick mode with args
 #   bash init.sh --file REQUIREMENTS.md    # File-based mode
+#
+# Idempotency:
+#   bash init.sh                           # Skip if already initialized
+#   bash init.sh --force                   # Overwrite existing files
+#   bash init.sh --init-only               # Only init if not yet initialized
+#   bash init.sh --update                  # Update/merge with existing
 # =============================================================================
 
 set -e
 
-readonly VERSION="2.0"
+readonly VERSION="2.1"
 
 # Colors
 RED='\033[0;31m'
@@ -178,6 +184,9 @@ confirm() {
 # =============================================================================
 
 parse_args() {
+    # Default: idempotent mode
+    INIT_MODE="init-only"
+
     while [[ $# -gt 0 ]]; do
         case $1 in
             --name)
@@ -212,6 +221,23 @@ parse_args() {
                 INTERACTIVE_MODE=yes
                 shift
                 ;;
+            # Idempotency flags
+            --init-only)
+                INIT_MODE="init-only"
+                shift
+                ;;
+            --force)
+                INIT_MODE="force"
+                shift
+                ;;
+            --update)
+                INIT_MODE="update"
+                shift
+                ;;
+            --skip-existing)
+                INIT_MODE="skip"
+                shift
+                ;;
             --help|-h)
                 show_help
                 exit 0
@@ -227,7 +253,7 @@ parse_args() {
 
 show_help() {
     cat << 'HELP'
-AgentFlow Initializer v2.0
+AgentFlow Initializer v2.1
 
 Usage:
   bash init.sh [OPTIONS]
@@ -241,14 +267,25 @@ Options:
   --file FILE           Read requirements from file
   --project-dir DIR     Project directory (default: .)
   --interactive         Force interactive mode
-  --help, -h            Show this help
+
+Idempotency Options:
+  --init-only           Only initialize if not yet initialized (default)
+  --force               Force overwrite existing files
+  --update              Merge with existing files (add new features)
+  --skip-existing       Skip files that already exist
 
 Examples:
-  # Interactive mode
+  # Interactive mode (idempotent - skips if initialized)
   bash init.sh --interactive
 
   # Quick start with arguments
   bash init.sh --name "MyCLI" --desc "A useful CLI tool" --type cli-tool --stack "Node.js,TypeScript"
+
+  # Force overwrite (for reset)
+  bash init.sh --name "MyProject" --force
+
+  # Update existing (add new features without losing progress)
+  bash init.sh --update --name "MyProject"
 
   # From requirements file
   bash init.sh --file REQUIREMENTS.md
@@ -737,15 +774,58 @@ main() {
     cd "$PROJECT_DIR" || exit 1
 
     # Check if already initialized
-    if [ -f "SPEC.md" ] && [ -f "FEATURES.json" ]; then
-        warn "Project already initialized (SPEC.md and FEATURES.json exist)"
-        if confirm "覆盖现有文件?"; then
-            info "Overwriting existing files..."
-        else
-            info "Keeping existing files, skipping generation"
-            return
-        fi
+    local already_initialized=false
+    local has_spec=false
+    local has_features=false
+
+    [ -f "SPEC.md" ] && has_spec=true
+    [ -f "FEATURES.json" ] && has_features=true
+
+    if $has_spec || $has_features; then
+        already_initialized=true
     fi
+
+    # Handle idempotency based on INIT_MODE
+    case "$INIT_MODE" in
+        "init-only")
+            if $already_initialized; then
+                info "Project already initialized (SPEC.md=$has_spec, FEATURES.json=$has_features)"
+                info "Use --force to overwrite, --update to merge, or --skip-existing to skip"
+                info "Skipping generation..."
+                echo ""
+                echo "Current project status:"
+                if $has_spec; then
+                    local proj_name=$(grep "^# " SPEC.md | head -1 | sed 's/^# //')
+                    echo "  - Project: $proj_name"
+                fi
+                if [ -f "FEATURES.json" ]; then
+                    local feat_count=$(jq '.features | length' FEATURES.json 2>/dev/null || echo "N/A")
+                    local pass_count=$(jq '[.features[] | select(.status == "pass")] | length' FEATURES.json 2>/dev/null || echo "0")
+                    echo "  - Features: $pass_count / $feat_count completed"
+                fi
+                echo ""
+                return 0
+            fi
+            ;;
+        "force")
+            if $already_initialized; then
+                warn "Force mode: Overwriting existing files..."
+            fi
+            ;;
+        "update")
+            if ! $already_initialized; then
+                warn "No existing project found, treating as fresh init"
+            else
+                info "Update mode: Will merge new features with existing (keeping progress)"
+            fi
+            ;;
+        "skip")
+            if [ -f "SPEC.md" ]; then
+                info "SKIP mode: Project already initialized, skipping..."
+                return 0
+            fi
+            ;;
+    esac
 
     section "Generating Project Artifacts"
 
