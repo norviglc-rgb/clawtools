@@ -33,14 +33,14 @@
       "id": "FEAT-003",
       "name": "一键安装",
       "module": "支持 stable/beta/dev 版本通道",
-      "status": "pending",
+      "status": "pass",
       "priority": "P0",
       "tests": [
         "TESTS/unit/支持 stablebetadev 版本通道.test.ts"
       ],
       "assigned_to": null,
       "notes": "",
-      "updated_at": "2026-03-23T19:26:05.388Z"
+      "updated_at": "2026-03-23T19:26:20.277Z"
     },
     {
       "id": "FEAT-004",
