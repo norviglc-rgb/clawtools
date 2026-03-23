@@ -150,13 +150,14 @@
       "id": "FEAT-012",
       "name": "迁移导出",
       "module": "跨平台迁移（Docker/HyperV/原生）",
-      "status": "pending",
+      "status": "pass",
       "priority": "P2",
       "tests": [
         "TESTS/unit/跨平台迁移（DockerHyperV原生）.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:35:48.196Z"
     },
     {
       "id": "FEAT-013",
@@ -174,8 +175,8 @@
   ],
   "summary": {
     "total": 13,
-    "pass": 0,
-    "pending": 13,
+    "pass": 13,
+    "pending": 0,
     "blocked": 0
   },
   "bugs": [],
