@@ -47,6 +47,16 @@
 ## 阻塞项
 无
 
+## Bug 修复
+
+### 2026-03-24T03:40:00Z - BUG-001: better-sqlite3 原生模块跨平台不兼容
+| 时间 | Agent | 修复内容 |
+|------|-------|----------|
+| 03:40 | Monitor | 发现问题并记录到 FEATURES.json bugs |
+| 03:40 | Monitor | 在 db/index.ts 实现自适应修复机制 |
+
+**修复方案**: 添加 `repairNativeModules()` 函数，程序启动时自动检测 better-sqlite3 是否与当前平台兼容，若不兼容则自动执行 `npm rebuild` 或 `npm install --force` 重新编译/安装。
+
 ## 待人工Review
 无
 

@@ -2,6 +2,75 @@ import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import { execSync } from 'child_process';
+
+// Adaptive native module repair mechanism
+let nativeModuleRepaired = false;
+
+function repairNativeModules(): boolean {
+  if (nativeModuleRepaired) return true;
+
+  try {
+    // Test if better-sqlite3 works
+    require('better-sqlite3');
+    return true;
+  } catch (initialError) {
+    console.warn('[ClawTools] Native module compatibility issue detected, attempting repair...');
+  }
+
+  const nativeDeps = ['better-sqlite3'];
+  const projectRoot = findProjectRoot();
+
+  for (const dep of nativeDeps) {
+    try {
+      // Try npm rebuild first
+      console.warn(`[ClawTools] Rebuilding ${dep}...`);
+      execSync(`npm rebuild ${dep}`, {
+        cwd: projectRoot,
+        stdio: 'pipe',
+      });
+
+      // Test if it works now
+      require(dep);
+      console.warn(`[ClawTools] ${dep} rebuilt successfully`);
+      nativeModuleRepaired = true;
+      return true;
+    } catch (rebuildError) {
+      try {
+        // If rebuild fails, try reinstalling
+        console.warn(`[ClawTools] Rebuild failed, reinstalling ${dep}...`);
+        execSync(`npm install ${dep} --force`, {
+          cwd: projectRoot,
+          stdio: 'pipe',
+        });
+
+        // Test
+        require(dep);
+        console.warn(`[ClawTools] ${dep} reinstalled successfully`);
+        nativeModuleRepaired = true;
+        return true;
+      } catch (reinstallError) {
+        // Continue to next dependency
+      }
+    }
+  }
+
+  return false;
+}
+
+function findProjectRoot(): string {
+  let dir = __dirname;
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, 'package.json'))) {
+      return dir;
+    }
+    dir = path.dirname(dir);
+  }
+  return __dirname;
+}
+
+// Initialize and repair native modules before Database import
+repairNativeModules();
 
 export interface AppConfig {
   id: number;

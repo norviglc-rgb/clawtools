@@ -1,23 +1,12 @@
-version: '3.8'
-
 services:
   test:
     build: .
-    volumes:
-      - .:/app
-    working_dir: /app
     command: sh -c "npm run typecheck && npm test"
 
   coverage:
     build: .
-    volumes:
-      - .:/app
-    working_dir: /app
     command: npm run test:coverage
 
   supervisor:
     build: .
-    volumes:
-      - .:/app
-    working_dir: /app
     command: bash .agentflow/supervisor-loop.sh start
