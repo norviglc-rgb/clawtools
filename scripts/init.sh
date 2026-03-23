@@ -1509,7 +1509,535 @@ COMMONEOF
 
     info "Created: .agentflow/supervisor-loop.sh (complete)"
     info "Created: .agentflow/common.sh"
+
+    # Create Claude Code hooks and agent definitions
+    create_claude_hooks
+    create_agent_definitions
 }
+
+# =============================================================================
+# Claude Code Hooks Configuration
+# =============================================================================
+
+create_claude_hooks() {
+    local hooks_dir="$PROJECT_DIR/.claude"
+    mkdir -p "$hooks_dir"
+
+    # settings.json - Claude Code configuration
+    cat > "$hooks_dir/settings.json" << 'SETTINGSEOF'
+{
+  "permissions": {
+    "allow": [
+      "Bash/npm/**",
+      "Bash/git/**",
+      "Bash/node/**"
+    ],
+    "deny": [
+      "Bash/rm -rf /*",
+      "Bash/rm -rf /"
+    ]
+  },
+  "hooks": {
+    "SessionStart": {
+      "command": "bash .claude/hooks/session-start.sh",
+      "description": "Restore context at session start"
+    },
+    "PreToolUse": {
+      "command": "bash .claude/hooks/pre-tool.sh",
+      "description": "Validate tool usage before execution"
+    },
+    "SessionEnd": {
+      "command": "bash .claude/hooks/session-end.sh",
+      "description": "Ensure clean session exit"
+    }
+  }
+}
+SETTINGSEOF
+    info "Created: .claude/settings.json"
+
+    # Create hooks directory and scripts
+    local hooks_script_dir="$hooks_dir/hooks"
+    mkdir -p "$hooks_script_dir"
+
+    # SessionStart hook
+    cat > "$hooks_script_dir/session-start.sh" << 'SESSIONSTARTEOF'
+#!/bin/bash
+# SessionStart Hook - Restore context at session start
+# =============================================================================
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+echo "═══════════════════════════════════════════════════════════"
+echo "  Session Start - Restoring Context"
+echo "═══════════════════════════════════════════════════════════"
+
+# 1. Show current git status
+echo ""
+echo "[1/5] Git Status:"
+git -C "$PROJECT_DIR" status --short 2>/dev/null || echo "Not a git repository"
+
+# 2. Show recent commits
+echo ""
+echo "[2/5] Recent commits:"
+git -C "$PROJECT_DIR" log --oneline -5 2>/dev/null || echo "No commits"
+
+# 3. Show progress summary
+echo ""
+echo "[3/5] Progress Summary:"
+if [ -f "$PROJECT_DIR/PROGRESS.md" ]; then
+    grep -E "^## |^### " "$PROJECT_DIR/PROGRESS.md" | head -10
+fi
+
+# 4. Show FEATURES.json status
+echo ""
+echo "[4/5] Features Status:"
+if [ -f "$PROJECT_DIR/FEATURES.json" ] && command -v jq &> /dev/null; then
+    TOTAL=$(jq '.features | length' "$PROJECT_DIR/FEATURES.json")
+    PASS=$(jq '[.features[] | select(.status == "pass")] | length' "$PROJECT_DIR/FEATURES.json")
+    PENDING=$(jq '[.features[] | select(.status == "pending")] | length' "$PROJECT_DIR/FEATURES.json")
+    echo "  Total: $TOTAL | Pass: $PASS | Pending: $PENDING"
+else
+    echo "  (jq not available)"
+fi
+
+# 5. Show checkpoint info
+echo ""
+echo "[5/5] Last Checkpoint:"
+if [ -d "$PROJECT_DIR/CHECKPOINTS" ]; then
+    ls -t "$PROJECT_DIR/CHECKPOINTS/" 2>/dev/null | head -1
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+SESSIONSTARTEOF
+    chmod +x "$hooks_script_dir/session-start.sh"
+    info "Created: .claude/hooks/session-start.sh"
+
+    # PreToolUse hook
+    cat > "$hooks_script_dir/pre-tool.sh" << 'PRETOOLEOF'
+#!/bin/bash
+# PreToolUse Hook - Validate tool usage before execution
+# =============================================================================
+
+TOOL="$1"
+ARGS="$2"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Protected files that should never be deleted
+PROTECTED_FILES=(
+    "FEATURES.json"
+    "SPEC.md"
+    "PROGRESS.md"
+    "SUPERVISOR.md"
+    "TRIGGERS.md"
+    ".gitignore"
+)
+
+# Check for dangerous operations
+case "$TOOL" in
+    "Bash")
+        # Block rm -rf on critical paths
+        if echo "$ARGS" | grep -qiE "(rm\s+-rf\s+|del\s+/[sf])"; then
+            if echo "$ARGS" | grep -qiE "(FEATURES|SPEC|PROGRESS|SUPERVISOR|TRIGGERS|\.git)"; then
+                echo "⚠️  PRETOOL: Blocked potentially destructive command"
+                echo "   Tool: $TOOL"
+                echo "   Args: $ARGS"
+                echo "   Reason: Targets protected project files"
+                echo ""
+                echo "If you need to delete these files, do it explicitly with git rm."
+                exit 1
+            fi
+        fi
+        ;;
+esac
+
+# Allow all other operations
+exit 0
+PRETOOLEOF
+    chmod +x "$hooks_script_dir/pre-tool.sh"
+    info "Created: .claude/hooks/pre-tool.sh"
+
+    # SessionEnd hook
+    cat > "$hooks_script_dir/session-end.sh" << 'SESSIONENDEOF'
+#!/bin/bash
+# SessionEnd Hook - Ensure clean session exit
+# =============================================================================
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "  Session End - Clean Exit"
+echo "═══════════════════════════════════════════════════════════"
+
+# 1. Check for uncommitted changes
+echo ""
+echo "[1/4] Checking for uncommitted changes..."
+if git -C "$PROJECT_DIR" diff --quiet 2>/dev/null; then
+    echo "  ✓ No uncommitted changes"
+else
+    echo "  ⚠️  Uncommitted changes found!"
+    git -C "$PROJECT_DIR" diff --stat
+    echo ""
+    echo "  Consider committing before exiting."
+fi
+
+# 2. Verify tests still pass
+echo ""
+echo "[2/4] Running quick verification..."
+if [ -f "$PROJECT_DIR/package.json" ]; then
+    if command -v npm &> /dev/null; then
+        npm run typecheck --prefix "$PROJECT_DIR" 2>/dev/null && echo "  ✓ Typecheck passed" || echo "  ⚠️  Typecheck failed"
+    fi
+fi
+
+# 3. Update progress if needed
+echo ""
+echo "[3/4] Progress status..."
+if [ -f "$PROJECT_DIR/FEATURES.json" ] && command -v jq &> /dev/null; then
+    PASS=$(jq '[.features[] | select(.status == "pass")] | length' "$PROJECT_DIR/FEATURES.json" 2>/dev/null || echo "0")
+    echo "  Features completed: $PASS"
+fi
+
+# 4. Show next recommended action
+echo ""
+echo "[4/4] Next recommended action:"
+if [ -f "$PROJECT_DIR/FEATURES.json" ] && command -v jq &> /dev/null; then
+    PENDING=$(jq '[.features[] | select(.status == "pending")] | length' "$PROJECT_DIR/FEATURES.json" 2>/dev/null || echo "0")
+    if [ "$PENDING" -gt 0 ]; then
+        NEXT=$(jq -r '[.features[] | select(.status == "pending")] | .[0].id + " - " + .[0].name' "$PROJECT_DIR/FEATURES.json" 2>/dev/null || echo "unknown")
+        echo "  Continue with: $NEXT"
+    else
+        echo "  🎉 All features complete! Ready for release."
+    fi
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+SESSIONENDEOF
+    chmod +x "$hooks_script_dir/session-end.sh"
+    info "Created: .claude/hooks/session-end.sh"
+}
+
+# =============================================================================
+# Agent Definitions
+# =============================================================================
+
+create_agent_definitions() {
+    # CLAUDE.md - Main project context
+    cat > "$PROJECT_DIR/CLAUDE.md" << 'CLAUDEMDEOF'
+# Project Context
+
+## Project Overview
+PROJECT_NAME
+
+## Key Files
+- **SPEC.md**: Project specification (source of truth)
+- **FEATURES.json**: Feature tracking with status
+- **PROGRESS.md**: Human-readable progress log
+- **SUPERVISOR.md**: Agent instructions
+- **CHECKPOINTS/**: Periodic snapshots
+
+## Agent Types
+
+### Supervisor Agent
+- **Role**: Project coordination, task assignment
+- **Instructions**: See SUPERVISOR.md
+- **Commands**: supervisor:start, supervisor:pause, etc.
+
+### Coding Agent
+- **Role**: Feature implementation
+- **Focus**: One feature at a time
+- **Output**: Code + tests + FEATURES.json update
+
+### Testing Agent
+- **Role**: E2E testing
+- **Focus**: Puppeteer-based browser automation
+- **Trigger**: After feature implementation
+
+### QA Agent
+- **Role**: Code review
+- **Focus**: Style, security, best practices
+- **Output**: Review comments
+
+### Recovery Agent
+- **Role**: Auto-repair
+- **Trigger**: When basic functionality breaks
+- **Scope**: Critical path recovery
+
+## Quality Standards
+- TypeScript strict mode
+- 80% test coverage
+- ESLint passing
+- No regression
+
+## Session Behavior
+- SessionStart: Restore context (see .claude/hooks/)
+- PreToolUse: Prevent destructive operations
+- SessionEnd: Ensure clean exit
+CLAUDEMDEOF
+    sed -i "s/PROJECT_NAME/$PROJECT_NAME/g" "$PROJECT_DIR/CLAUDE.md"
+    info "Created: CLAUDE.md"
+
+    # AGENTS.md - Detailed agent instructions
+    cat > "$PROJECT_DIR/AGENTS.md" << 'AGENTSMDEOF'
+# Agent Team Specification
+
+## Agent Hierarchy
+
+```
+┌─────────────────────────────────────────────────┐
+│              Human (Oversight Only)              │
+└─────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────┐
+│           Supervisor Agent (Master)                │
+│  - Task assignment                               │
+│  - Quality gates                                 │
+│  - Self-correction                               │
+│  - Progress tracking                             │
+└─────────────────────────────────────────────────┘
+           │           │           │
+           ▼           ▼           ▼
+    ┌──────────┐ ┌──────────┐ ┌──────────┐
+    │  Coding  │ │  Testing  │ │    QA    │
+    │  Agent   │ │   Agent   │ │   Agent  │
+    └──────────┘ └──────────┘ └──────────┘
+                        │
+                        ▼
+               ┌──────────────┐
+               │   Recovery   │
+               │    Agent     │
+               └──────────────┘
+```
+
+## Supervisor Agent
+
+### Responsibilities
+- Orchestrate all other agents
+- Maintain FEATURES.json
+- Enforce quality gates
+- Trigger self-correction
+
+### Trigger
+- On push to develop branch
+- Manual: `supervisor:start`
+- Scheduled: Every 6 hours
+
+### Exit Conditions
+1. All P0/P1 features status="pass"
+2. Test coverage ≥ 80%
+3. All tests pass
+4. No open P0/P1 bugs
+
+## Coding Agent
+
+### Responsibilities
+- Implement one feature at a time
+- Write unit tests
+- Update FEATURES.json
+- Follow style guide
+
+### Workflow
+1. Read feature from FEATURES.json
+2. Implement code
+3. Write/run tests
+4. Run typecheck + lint
+5. Update FEATURES.json status
+6. Update PROGRESS.md
+7. Create git commit
+
+## Testing Agent
+
+### Responsibilities
+- E2E test implementation
+- Browser automation (Puppeteer)
+- Cross-platform verification
+
+### Trigger
+- After Coding Agent completes feature
+- Before feature marked "pass"
+
+### Scope
+- Critical user flows
+- No UI regressions
+- Platform-specific issues
+
+## QA Agent
+
+### Responsibilities
+- Code review
+- Security audit
+- Best practices check
+
+### Trigger
+- After Coding Agent commits
+- Before feature marked "pass"
+
+### Focus Areas
+- TypeScript correctness
+- Error handling
+- Security (API keys, etc.)
+- Performance
+
+## Recovery Agent
+
+### Responsibilities
+- Detect broken basics
+- Auto-repair critical issues
+- Restore functionality
+
+### Trigger
+- When npm test fails
+- When typecheck fails
+- When basic functionality breaks
+
+### Scope
+- npm dependency issues
+- TypeScript compilation errors
+- Configuration corruption
+
+### Limitations
+- Cannot fix design errors
+- Cannot recover deleted files (use git)
+
+## Agent Communication
+
+### Via FEATURES.json
+```json
+{
+  "features": [{
+    "id": "FEAT-001",
+    "status": "in_progress",
+    "assigned_to": "coding-agent-1",
+    "notes": "Implementing..."
+  }]
+}
+```
+
+### Via PROGRESS.md
+```
+### 2024-01-15 10:30
+| Time | Action | Agent | Result |
+|------|--------|-------|--------|
+| 10:30 | FEAT-001 | Coding-1 | progress |
+```
+AGENTSMDEOF
+    info "Created: AGENTS.md"
+
+    # Long-running Skill definition
+    create_supervisor_skill
+}
+
+# =============================================================================
+# Long-running Skill
+# =============================================================================
+
+create_supervisor_skill() {
+    local skills_dir="$PROJECT_DIR/.claude/skills"
+    mkdir -p "$skills_dir"
+
+    cat > "$skills_dir/supervisor.md" << 'SUPERVISORSKILLEOF'
+# Supervisor Skill
+
+> Long-running skill for project orchestration and automated development
+
+## Purpose
+This skill provides continuous project management, automatically assigning tasks, validating quality, and maintaining progress without human intervention.
+
+## Usage
+```
+/supervisor start    # Start the supervisor loop
+/supervisor status   # Show current status
+/supervisor pause    # Pause development
+/supervisor resume   # Resume development
+/supervisor checkpoint # Create checkpoint
+/supervisor exit     # Check exit conditions
+```
+
+## Commands
+
+### start
+Starts the supervisor loop. The supervisor will:
+1. Read FEATURES.json for pending tasks
+2. Assign tasks by priority (P0 > P1 > P2)
+3. Wait for Coding Agent to complete
+4. Validate quality (tests, typecheck, lint)
+5. Update status and progress
+6. Check self-correction triggers
+7. Create periodic checkpoints
+
+### status
+Shows:
+- Current state (IDLE/RUNNING/PAUSED/DONE)
+- Features: X/Y completed
+- Bugs: open count
+- Last checkpoint time
+
+### pause
+Pauses the supervisor loop. Current task completes, then stops.
+
+### resume
+Resumes from paused state.
+
+### checkpoint
+Immediately creates a checkpoint:
+- Snapshots FEATURES.json
+- Updates CHECKPOINTS/
+- Logs current state
+
+### exit
+Checks exit conditions:
+- All P0/P1 features pass?
+- Coverage ≥ 80%?
+- All tests pass?
+- No open P0/P1 bugs?
+
+Reports status and suggests next action.
+
+## Exit Conditions
+All must be true:
+1. `jq '[.features[] | select(.priority | IN("P0","P1")) | select(.status != "pass")] | length' FEATURES.json` = 0
+2. Coverage ≥ 80%
+3. `npm test` passes
+4. `jq '[.bugs[] | select(.priority | IN("P0","P1") and .status == "open")] | length' FEATURES.json` = 0
+
+## Self-Correction Triggers
+
+| Trigger | Condition | Action |
+|---------|-----------|--------|
+| Timeout | Feature pending > 48h | Reassign or split |
+| Repeated failure | Same feature fails 3x | Mark for human review |
+| Coverage drop | < 80% | Prioritize test writing |
+| Build broken | typecheck fails | Block and alert |
+
+## Quality Gates
+Before marking feature "pass":
+- [ ] Unit tests exist and pass
+- [ ] TypeScript compiles without errors
+- [ ] ESLint passes
+- [ ] Coverage ≥ 80%
+- [ ] No new bugs introduced
+
+## Integration
+This skill works with:
+- **FEATURES.json**: Task tracking
+- **PROGRESS.md**: Human-readable log
+- **CHECKPOINTS/**: Periodic snapshots
+- **Git**: Commit history
+
+## Safety
+- PreToolUse hook prevents deleting protected files
+- SessionEnd hook ensures clean exit
+- Checkpoints allow rollback
+SUPERVISORSKILLEOF
+    info "Created: .claude/skills/supervisor.md"
+}
+
+# =============================================================================
+# CI/CD Configuration
+# =============================================================================
 
 create_cicd_config() {
     local workflow_dir="$PROJECT_DIR/.github/workflows"
