@@ -1,274 +1,324 @@
 {
   "version": "0.1.0",
-  "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "created": "2026-03-23T18:38:39Z",
+  "updated": "2026-03-23T18:38:39Z",
   "features": [
     {
-      "id": "core-001",
-      "name": "项目初始化",
-      "module": "core/init",
-      "status": "pass",
-      "priority": "P0",
-      "tests": [],
-      "notes": "初始化完成"
-    },
+      "id": "FEAT-001",
+      "name": "API",
+      "module": "",
+      "status": "pending",
+      "priority": "",
+      "tests": [""],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "det-001",
-      "name": "平台检测",
-      "module": "core/detector",
+      "id": "FEAT-002",
+      "name": "Key",
+      "module": "",
+      "status": "pending",
+      "priority": "",
+      "tests": [""],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-003",
+      "name": "安全存储",
+      "module": "加密存储到本地",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/加密存储到本地.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-004",
+      "name": "SQLite",
+      "module": "P0",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/P0.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-005",
+      "name": "Provider",
+      "module": "",
+      "status": "pending",
+      "priority": "",
+      "tests": [""],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-006",
+      "name": "预设",
+      "module": "OpenAI、MiniMax、智谱(GLM)",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/OpenAI、MiniMax、智谱(GLM).test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-007",
+      "name": "等",
+      "module": "P0",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/P0.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-008",
+      "name": "一键安装",
+      "module": "支持",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/支持.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-009",
+      "name": "stable/beta/dev",
+      "module": "",
+      "status": "pending",
+      "priority": "",
+      "tests": [""],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-010",
+      "name": "版本通道",
+      "module": "P0",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/P0.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-011",
+      "name": "卸载功能",
+      "module": "干净卸载",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/干净卸载.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-012",
+      "name": "OpenClaw",
+      "module": "P1",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/P1.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-013",
+      "name": "备份配置",
+      "module": "打包配置文件",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/detector.test.ts"],
-      "assigned_to": null
-    },
+      "tests": ["TESTS/unit/打包配置文件.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "det-002",
-      "name": "Node.js版本检测",
-      "module": "core/detector",
-      "status": "pending",
-      "priority": "P0",
-      "tests": ["TESTS/unit/detector.test.ts"],
-      "assigned_to": null
-    },
-    {
-      "id": "det-003",
-      "name": "OpenClaw安装状态检测",
-      "module": "core/detector",
-      "status": "pending",
-      "priority": "P0",
-      "tests": ["TESTS/unit/detector.test.ts"],
-      "assigned_to": null
-    },
-    {
-      "id": "det-004",
-      "name": "防火墙检测",
-      "module": "core/detector",
+      "id": "FEAT-014",
+      "name": "安全扫描",
+      "module": "防火墙/端口检测（需用户授权）",
       "status": "pending",
       "priority": "P1",
-      "tests": ["TESTS/unit/detector.test.ts"],
-      "assigned_to": null
-    },
+      "tests": ["TESTS/unit/防火墙端口检测（需用户授权）.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "det-005",
-      "name": "端口检测",
-      "module": "core/detector",
-      "status": "pending",
-      "priority": "P1",
-      "tests": ["TESTS/unit/detector.test.ts"],
-      "assigned_to": null
-    },
-    {
-      "id": "inst-001",
-      "name": "OpenClaw安装(stable)",
-      "module": "core/installer",
+      "id": "FEAT-015",
+      "name": "恢复备份",
+      "module": "从备份恢复",
       "status": "pending",
       "priority": "P0",
-      "tests": ["TESTS/unit/installer.test.ts"],
-      "assigned_to": null
-    },
+      "tests": ["TESTS/unit/从备份恢复.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "inst-002",
-      "name": "OpenClaw安装(beta/dev)",
-      "module": "core/installer",
+      "id": "FEAT-016",
+      "name": "文档搜索",
+      "module": "离线搜索",
       "status": "pending",
-      "priority": "P1",
-      "tests": ["TESTS/unit/installer.test.ts"],
-      "assigned_to": null
-    },
+      "priority": "",
+      "tests": ["TESTS/unit/离线搜索.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "inst-003",
-      "name": "OpenClaw卸载",
-      "module": "core/installer",
+      "id": "FEAT-017",
+      "name": "OpenClaw",
+      "module": "",
       "status": "pending",
-      "priority": "P1",
-      "tests": [],
-      "assigned_to": null
-    },
+      "priority": "",
+      "tests": [""],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "cfg-001",
-      "name": "Provider预设配置",
-      "module": "config/providers",
+      "id": "FEAT-018",
+      "name": "文档",
+      "module": "P1",
       "status": "pending",
-      "priority": "P0",
-      "tests": ["TESTS/unit/configurator.test.ts"],
-      "assigned_to": null
-    },
+      "priority": "",
+      "tests": ["TESTS/unit/P1.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "cfg-002",
-      "name": "API Key加密存储",
-      "module": "core/configurator",
+      "id": "FEAT-019",
+      "name": "版本选择",
+      "module": "用户可选",
       "status": "pending",
-      "priority": "P0",
-      "tests": ["TESTS/unit/configurator.test.ts"],
-      "assigned_to": null
-    },
+      "priority": "",
+      "tests": ["TESTS/unit/用户可选.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "cfg-003",
-      "name": "配置文件读写",
-      "module": "core/configurator",
+      "id": "FEAT-020",
+      "name": "OpenClaw",
+      "module": "",
       "status": "pending",
-      "priority": "P0",
-      "tests": ["TESTS/unit/configurator.test.ts"],
-      "assigned_to": null
-    },
+      "priority": "",
+      "tests": [""],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "doc-001",
+      "id": "FEAT-021",
+      "name": "版本",
+      "module": "P0",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/P0.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-022",
+      "name": "环境检测",
+      "module": "检测",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/检测.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-023",
+      "name": "Node.js、平台、防火墙、公网IP等",
+      "module": "P0",
+      "status": "pending",
+      "priority": "",
+      "tests": ["TESTS/unit/P0.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
+    {
+      "id": "FEAT-024",
       "name": "系统诊断",
-      "module": "core/doctor",
+      "module": "检测",
       "status": "pending",
-      "priority": "P0",
-      "tests": ["TESTS/unit/doctor.test.ts"],
-      "assigned_to": null
-    },
+      "priority": "",
+      "tests": ["TESTS/unit/检测.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "doc-002",
-      "name": "openclaw doctor集成",
-      "module": "core/doctor",
+      "id": "FEAT-025",
+      "name": "OpenClaw",
+      "module": "",
       "status": "pending",
-      "priority": "P1",
-      "tests": [],
-      "assigned_to": null
-    },
+      "priority": "",
+      "tests": [""],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "bak-001",
-      "name": "配置文件备份",
-      "module": "core/backup",
+      "id": "FEAT-026",
+      "name": "运行状态",
+      "module": "P0",
       "status": "pending",
-      "priority": "P0",
-      "tests": ["TESTS/unit/backup.test.ts"],
-      "assigned_to": null
-    },
+      "priority": "",
+      "tests": ["TESTS/unit/P0.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+,
     {
-      "id": "bak-002",
-      "name": "备份恢复",
-      "module": "core/backup",
-      "status": "pending",
-      "priority": "P0",
-      "tests": ["TESTS/unit/backup.test.ts"],
-      "assigned_to": null
-    },
-    {
-      "id": "bak-003",
+      "id": "FEAT-027",
       "name": "迁移导出",
-      "module": "core/backup",
+      "module": "跨平台迁移（Docker/HyperV/原生）",
       "status": "pending",
       "priority": "P2",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "sea-001",
-      "name": "文档clone",
-      "module": "core/search",
-      "status": "pending",
-      "priority": "P1",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "sea-002",
-      "name": "全文索引和搜索",
-      "module": "core/search",
-      "status": "pending",
-      "priority": "P1",
-      "tests": ["TESTS/unit/search.test.ts"],
-      "assigned_to": null
-    },
-    {
-      "id": "tui-001",
-      "name": "主菜单界面",
-      "module": "cli/App",
-      "status": "pending",
-      "priority": "P0",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "tui-002",
-      "name": "安装界面",
-      "module": "cli/screens/install",
-      "status": "pending",
-      "priority": "P0",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "tui-003",
-      "name": "配置界面",
-      "module": "cli/screens/config",
-      "status": "pending",
-      "priority": "P0",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "tui-004",
-      "name": "诊断界面",
-      "module": "cli/screens/doctor",
-      "status": "pending",
-      "priority": "P0",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "tui-005",
-      "name": "备份界面",
-      "module": "cli/screens/backup",
-      "status": "pending",
-      "priority": "P1",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "tui-006",
-      "name": "搜索界面",
-      "module": "cli/screens/search",
-      "status": "pending",
-      "priority": "P1",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "db-001",
-      "name": "SQLite数据库初始化",
-      "module": "db",
-      "status": "pending",
-      "priority": "P0",
-      "tests": [],
-      "assigned_to": null
-    },
-    {
-      "id": "i18n-001",
-      "name": "国际化框架",
-      "module": "i18n",
-      "status": "pass",
-      "priority": "P0",
-      "tests": [],
-      "notes": "框架已创建"
-    },
-    {
-      "id": "i18n-002",
-      "name": "中文翻译",
-      "module": "i18n",
-      "status": "pass",
-      "priority": "P0",
-      "tests": [],
-      "notes": "中文为默认语言"
-    },
-    {
-      "id": "i18n-003",
-      "name": "英文翻译",
-      "module": "i18n",
-      "status": "pending",
-      "priority": "P1",
-      "tests": [],
-      "assigned_to": null
+      "tests": ["TESTS/unit/跨平台迁移（DockerHyperV原生）.test.ts"],
+      "assigned_to": null,
+      "notes": ""
     }
+,
+    {
+      "id": "FEAT-028",
+      "name": "配置模板",
+      "module": "预置优化配置（付费跳过、推荐项打开）",
+      "status": "pending",
+      "priority": "P1",
+      "tests": ["TESTS/unit/预置优化配置（付费跳过、推荐项打开）.test.ts"],
+      "assigned_to": null,
+      "notes": ""
+    }
+
   ],
   "summary": {
-    "total": 27,
-    "pass": 3,
-    "pending": 24,
+    "total": 28,
+    "pass": 0,
+    "pending": 28,
     "blocked": 0
-  }
+  },
+  "bugs": [],
+  "debugs": [],
+  "self_corrections": []
 }

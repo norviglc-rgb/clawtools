@@ -1,0 +1,118 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash/npm/**",
+      "Bash/git/**",
+      "Bash/node/**",
+      "Bash/npm run typecheck",
+      "Bash/npm test",
+      "Bash/npm run lint"
+    ],
+    "deny": [
+      "Bash/rm -rf /*",
+      "Bash/rm -rf /",
+      "Bash/curl *password*",
+      "Bash/wget *secret*"
+    ]
+  },
+  "hooks": {
+    "SessionStart": {
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/session-start.sh",
+        "timeout": 30,
+        "description": "Restore context and check budget"
+      }]
+    },
+    "PreToolUse": [{
+      "matcher": "Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/pre-tool.sh",
+        "timeout": 10,
+        "description": "Block dangerous commands"
+      }]
+    }, {
+      "matcher": "Write|Edit",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/pre-write.sh",
+        "timeout": 10,
+        "description": "Detect TODOs and placeholders"
+      }]
+    }],
+    "PostToolUse": {
+      "matcher": "Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/post-bash.sh",
+        "timeout": 10,
+        "description": "Scrub secrets from output"
+      }]
+    },
+    "PostToolUseFailure": {
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/post-failure.sh",
+        "timeout": 15,
+        "description": "Detect retry loops"
+      }]
+    },
+    "SubagentStop": {
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/subagent-stop.sh",
+        "timeout": 20,
+        "description": "Detect scope reduction"
+      }]
+    },
+    "Stop": {
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/stop.sh",
+        "timeout": 30,
+        "description": "Anti-rationalization gate"
+      }]
+    },
+    "PreCompact": {
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/pre-compact.sh",
+        "timeout": 15,
+        "description": "Prepare context for compaction"
+      }]
+    },
+    "PostCompact": {
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/post-compact.sh",
+        "timeout": 15,
+        "description": "Verify compaction result"
+      }]
+    },
+    "TaskCompleted": {
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/task-completed.sh",
+        "timeout": 20,
+        "description": "Validate task completion"
+      }]
+    },
+    "SessionEnd": {
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/session-end.sh",
+        "timeout": 30,
+        "description": "Ensure clean exit"
+      }]
+    }
+  }
+}

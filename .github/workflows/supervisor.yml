@@ -42,21 +42,23 @@ jobs:
           echo "Commit: ${{ inputs.commit || github.sha }}"
           echo ""
 
-          # Start supervisor loop if it exists
-          if [ -f .agentflow/supervisor-loop.sh ]; then
-            bash .agentflow/supervisor-loop.sh start
-          else
-            echo "⚠ supervisor-loop.sh not found"
-          fi
+          # Start supervisor loop
+          bash .agentflow/supervisor-loop.sh start
 
       - name: Checkpoint
-        if: always()
         run: |
           mkdir -p CHECKPOINTS
-          if [ -f FEATURES.json ]; then
-            cp FEATURES.json CHECKPOINTS/$(date +%Y%m%d-%H%M%S)-FEATURES.json
-            echo "✓ Checkpoint created"
-          fi
+          cp FEATURES.json CHECKPOINTS/$(date +%Y%m%d-%H%M%S)-FEATURES.json
+          echo "✓ Checkpoint created"
+
+      - name: Commit Progress
+        if: success()
+        run: |
+          git config user.name "Supervisor Agent"
+          git config user.email "supervisor@agentflow.dev"
+          git add -A
+          git diff --cached --quiet || git commit -m "feat: supervisor progress update [skip ci]"
+          git push || true
 
       - name: Report Status
         if: always()
