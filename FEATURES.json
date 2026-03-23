@@ -46,13 +46,14 @@
       "id": "FEAT-004",
       "name": "卸载功能",
       "module": "干净卸载 OpenClaw",
-      "status": "pending",
+      "status": "pass",
       "priority": "P1",
       "tests": [
         "TESTS/unit/干净卸载 OpenClaw.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:26:37.712Z"
     },
     {
       "id": "FEAT-005",
