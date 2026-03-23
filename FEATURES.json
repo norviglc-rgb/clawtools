@@ -162,13 +162,14 @@
       "id": "FEAT-013",
       "name": "配置模板",
       "module": "预置优化配置（付费跳过、推荐项打开）",
-      "status": "pending",
+      "status": "pass",
       "priority": "P1",
       "tests": [
         "TESTS/unit/预置优化配置（付费跳过、推荐项打开）.test.ts"
       ],
       "assigned_to": null,
-      "notes": ""
+      "notes": "",
+      "updated_at": "2026-03-23T19:26:48.401Z"
     }
   ],
   "summary": {
