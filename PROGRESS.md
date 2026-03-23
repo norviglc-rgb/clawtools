@@ -39,6 +39,15 @@
 
 ## 进度日志
 
+### 2026-03-24T03:10:00Z - Supervisor Loop 执行
+| 时间 | 操作 | Agent |
+|------|------|-------|
+| 2026-03-24T03:10:00Z | 配置测试框架 (vitest) | Claude Agent |
+| 2026-03-24T03:10:00Z | 编写 detector.test.ts | Claude Agent |
+| 2026-03-24T03:10:00Z | 编写 configurator.test.ts | Claude Agent |
+| 2026-03-24T03:10:00Z | 验证 FEAT-001, FEAT-002, FEAT-010 | Claude Agent |
+| 2026-03-24T03:10:00Z | 更新 FEATURES.json 和 PROGRESS.md | Claude Agent |
+
 ### 2026-03-23T19:09:01Z - 初始化
 | 时间 | 操作 | Agent |
 |------|------|-------|
@@ -61,10 +70,18 @@
 | 指标 | 值 |
 |------|-----|
 | 总功能数 | 13 |
-| 已完成 | 0 |
+| 已完成 | 3 |
 | 进行中 | 0 |
-| 待开始 | 13 |
-| 完成率 | 0% |
+| 待开始 | 10 |
+| 完成率 | 23% |
+
+## 已完成功能
+
+| Feature | Name | Tests |
+|---------|------|-------|
+| FEAT-001 | API Key 安全存储 | TESTS/unit/configurator.test.ts |
+| FEAT-002 | Provider 预设 | TESTS/unit/configurator.test.ts |
+| FEAT-010 | 环境检测 | TESTS/unit/detector.test.ts |
 
 ---
 
