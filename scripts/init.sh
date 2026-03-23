@@ -1326,7 +1326,7 @@ log() {
     local level="$1"
     shift
     local msg="[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $*"
-    echo "$msg" | tee -a "$LOG_FILE"
+    echo "$msg" >> "$LOG_FILE"
 }
 
 log_info()    { log "INFO" "$@"; }
