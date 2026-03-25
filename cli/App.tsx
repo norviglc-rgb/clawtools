@@ -47,11 +47,13 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
       if (!showScreen) {
         // Arrow key navigation
         if (key === '\u001b[A') { // Arrow up
-          setCursorIndex((i) => Math.max(0, i - 1));
-          setSelectedMenu(menuKeys[Math.max(0, cursorIndex - 1)]);
+          const newIndex = Math.max(0, cursorIndex - 1);
+          setCursorIndex(newIndex);
+          setSelectedMenu(menuKeys[newIndex]);
         } else if (key === '\u001b[B') { // Arrow down
-          setCursorIndex((i) => Math.min(menuKeys.length - 1, i + 1));
-          setSelectedMenu(menuKeys[Math.min(menuKeys.length - 1, cursorIndex + 1)]);
+          const newIndex = Math.min(menuKeys.length - 1, cursorIndex + 1);
+          setCursorIndex(newIndex);
+          setSelectedMenu(menuKeys[newIndex]);
         } else if (key === '\r' || key === '\n') { // Enter
           const selected = menuKeys[cursorIndex];
           if (selected === 'exit') {
