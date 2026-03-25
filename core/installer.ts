@@ -269,6 +269,40 @@ async function testMirror(mirror: string): Promise<boolean> {
   }
 }
 
+// 国内 Docker 镜像加速器
+const DOCKER_MIRRORS = [
+  'https://docker.1ms.run',     // 稍后再试
+  'https://docker.xuanyuan.me', // 百度一下你就知道
+];
+
+async function tryDockerMirror(image: string, mirror: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Windows 配置 Docker 镜像加速器
+    if (process.platform === 'win32') {
+      const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
+      const daemonConfig = {
+        "registry-mirrors": [mirror]
+      };
+      try {
+        fs.mkdirSync(path.dirname(daemonJsonPath), { recursive: true });
+        fs.writeFileSync(daemonJsonPath, JSON.stringify(daemonConfig, null, 2));
+        // 重启 Docker 服务使配置生效
+        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+      } catch (configError) {
+        // 配置失败，继续尝试直接拉取
+      }
+    } else {
+      // Linux/Mac 配置
+      const registry = mirror.replace(/\/$/, '');
+      execSync(`sudo mkdir -p /etc/docker && echo '{"registry-mirrors":["${registry}"]}' | sudo tee /etc/docker/daemon.json && sudo systemctl restart docker`, { stdio: 'pipe', timeout: 60000 });
+    }
+    execSync(`docker pull ${image}`, { stdio: 'pipe', timeout: 120000 });
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function installOpenClaw(options: InstallOptions): Promise<InstallResult> {
   const { method, channel, platform, version } = options;
   const versionSpec = version || (channel === 'stable' ? 'latest' : channel);
@@ -277,20 +311,60 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
   // Platform-specific installation
   if (platform === 'docker') {
     // Docker platform - run OpenClaw in a Docker container
+    const dockerImage = `openclaw/openclaw:${versionSpec}`;
+
+    // 先尝试国内镜像加速器
+    console.log(`[ClawTools] 尝试使用国内镜像加速...`);
+    for (const mirror of DOCKER_MIRRORS) {
+      process.stdout.write(`  尝试镜像: ${mirror}... `);
+      const result = await tryDockerMirror(dockerImage, mirror);
+      if (result.success) {
+        console.log('成功!');
+        return {
+          success: true,
+          message: `OpenClaw 已就绪 (镜像加速): docker run ${dockerImage}`,
+          path: dockerImage,
+        };
+      }
+      console.log('失败');
+    }
+
+    // 镜像都失败，尝试直接拉取
     try {
-      const dockerImage = `openclaw/openclaw:${versionSpec}`;
-      console.log(`[ClawTools] Pulling Docker image ${dockerImage}...`);
-      execSync(`docker pull ${dockerImage}`, { stdio: ['inherit', 'pipe', 'pipe'], shell });
+      console.log(`[ClawTools] 尝试直接拉取 Docker Hub...`);
+      execSync(`docker pull ${dockerImage}`, { stdio: ['inherit', 'pipe', 'pipe'], shell, timeout: 180000 });
       return {
         success: true,
-        message: `OpenClaw is available via Docker: docker run ${dockerImage}`,
+        message: `OpenClaw 已就绪: docker run ${dockerImage}`,
         path: dockerImage,
       };
     } catch (error: any) {
-      // Capture stderr for detailed error message
-      const stderr = error.stderr ? error.stderr.toString() : '';
-      const detailMsg = stderr.trim() || error.message;
-      return { success: false, message: `Docker 拉取失败: ${detailMsg}` };
+      // 尝试其他常见错误修复
+      try {
+        console.log(`[ClawTools] 尝试修复 Docker 配置...`);
+        // 尝试设置 DNS 或重启 Docker 服务
+        execSync(`netcfg -i "Docker NAT" -dns=8.8.8.8 2>/dev/null || true`, { stdio: 'pipe', shell });
+        execSync(`docker pull ${dockerImage}`, { stdio: ['inherit', 'pipe', 'pipe'], shell, timeout: 180000 });
+        return {
+          success: true,
+          message: `OpenClaw 已就绪: docker run ${dockerImage}`,
+          path: dockerImage,
+        };
+      } catch (retryError: any) {
+        const stderr = retryError.stderr ? retryError.stderr.toString() : '';
+        let detailMsg = stderr.trim() || retryError.message;
+
+        // 给出更友好的错误提示
+        if (detailMsg.includes('network') || detailMsg.includes('connection')) {
+          detailMsg = '网络连接失败，请检查网络或 VPN 设置';
+        } else if (detailMsg.includes('not found') || detailMsg.includes('404')) {
+          detailMsg = `镜像 ${dockerImage} 不存在，请检查版本号是否正确`;
+        } else if (detailMsg.includes('authentication') || detailMsg.includes('login')) {
+          detailMsg = '需要登录 Docker Hub，请运行 docker login';
+        }
+
+        return { success: false, message: `Docker 拉取失败: ${detailMsg}` };
+      }
     }
   }
 
