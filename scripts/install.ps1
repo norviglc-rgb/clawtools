@@ -9,9 +9,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
-Write-Host "╔═══════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║           ClawTools Installer v0.1.0          ║" -ForegroundColor Cyan
-Write-Host "╚═══════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "+===============================================+" -ForegroundColor Cyan
+Write-Host "|           ClawTools Installer v0.1.0          |" -ForegroundColor Cyan
+Write-Host "+===============================================+" -ForegroundColor Cyan
 Write-Host ""
 
 # Check Node.js
@@ -108,9 +108,9 @@ function Install-ClawTools {
     }
 
     Write-Host ""
-    Write-Host "╔═══════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║        Installation Complete!                ║" -ForegroundColor Green
-    Write-Host "╚═══════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host "+===============================================+" -ForegroundColor Green
+    Write-Host "|        Installation Complete!                |" -ForegroundColor Green
+    Write-Host "+===============================================+" -ForegroundColor Green
     Write-Host ""
     Write-Host "Run 'clawtools' to start." -ForegroundColor White
     Write-Host ""
