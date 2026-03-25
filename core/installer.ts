@@ -276,29 +276,18 @@ const DOCKER_MIRRORS = [
 ];
 
 async function tryDockerMirror(image: string, mirror: string): Promise<{ success: boolean; error?: string }> {
-  // 备份原始 daemon.json
   const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
-  let backupContent: string | null = null;
 
   try {
     // Windows 配置 Docker 镜像加速器
     if (process.platform === 'win32') {
-      try {
-        // 备份原始配置
-        if (fs.existsSync(daemonJsonPath)) {
-          backupContent = fs.readFileSync(daemonJsonPath, 'utf8');
-        }
-        const daemonConfig = {
-          "registry-mirrors": [mirror]
-        };
-        fs.mkdirSync(path.dirname(daemonJsonPath), { recursive: true });
-        fs.writeFileSync(daemonJsonPath, JSON.stringify(daemonConfig, null, 2));
-        // 重启 Docker 服务使配置生效
-        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
-      } catch (configError) {
-        // 配置失败，返回错误
-        return { success: false, error: `配置镜像加速器失败: ${(configError as Error).message}` };
-      }
+      const daemonConfig = {
+        "registry-mirrors": [mirror]
+      };
+      fs.mkdirSync(path.dirname(daemonJsonPath), { recursive: true });
+      fs.writeFileSync(daemonJsonPath, JSON.stringify(daemonConfig, null, 2));
+      // 重启 Docker 服务使配置生效
+      execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
     } else {
       // Linux/Mac 配置
       const registry = mirror.replace(/\/$/, '');
@@ -309,18 +298,13 @@ async function tryDockerMirror(image: string, mirror: string): Promise<{ success
     execSync(`docker pull ${image}`, { stdio: 'pipe', timeout: 120000 });
     return { success: true };
   } catch (error: any) {
-    // 清理：恢复原始 daemon.json
-    if (backupContent !== null) {
-      try {
-        fs.writeFileSync(daemonJsonPath, backupContent);
-        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
-      } catch {}
-    } else if (fs.existsSync(daemonJsonPath)) {
-      try {
+    // 清理 daemon.json
+    try {
+      if (fs.existsSync(daemonJsonPath)) {
         fs.unlinkSync(daemonJsonPath);
-        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
-      } catch {}
-    }
+      }
+      execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+    } catch {}
 
     // 提取有意义的错误信息
     const errorMsg = error.message || '';
@@ -344,9 +328,58 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
   if (platform === 'docker') {
     // Docker platform - run OpenClaw in a Docker container
     const dockerImage = `openclaw/openclaw:${versionSpec}`;
+    const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
 
-    // 先尝试国内镜像加速器
-    console.log(`[ClawTools] 尝试使用国内镜像加速...`);
+    // 清理函数：恢复 Docker 到干净状态
+    const cleanupDockerConfig = (originalContent: string | null) => {
+      try {
+        if (originalContent !== null) {
+          fs.writeFileSync(daemonJsonPath, originalContent);
+        } else if (fs.existsSync(daemonJsonPath)) {
+          fs.unlinkSync(daemonJsonPath);
+        }
+        // 重启 Docker 服务
+        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+      } catch {}
+    };
+
+    // 保存原始配置
+    let originalConfig: string | null = null;
+    if (fs.existsSync(daemonJsonPath)) {
+      try {
+        originalConfig = fs.readFileSync(daemonJsonPath, 'utf8');
+      } catch {}
+    }
+
+    // Step 1: 先清理配置，测试直接拉取 Docker Hub
+    console.log(`[ClawTools] 清理旧配置并测试 Docker Hub...`);
+    cleanupDockerConfig(null);
+
+    try {
+      console.log(`  正在拉取 ${dockerImage}...`);
+      execSync(`docker pull ${dockerImage}`, { stdio: 'pipe', timeout: 180000 });
+      console.log('[ClawTools] Docker Hub 直接拉取成功!');
+      return {
+        success: true,
+        message: `OpenClaw 已就绪: docker run ${dockerImage}`,
+        path: dockerImage,
+      };
+    } catch (directError: any) {
+      const directErrorMsg = directError.message || '';
+      // 如果不是网络/DNS问题（429/unexpected），说明镜像本身可能不存在，直接返回
+      if (!directErrorMsg.includes('429') && !directErrorMsg.includes('unexpected')) {
+        // 恢复原始配置
+        cleanupDockerConfig(originalConfig);
+        return {
+          success: false,
+          message: `Docker 拉取失败: ${directErrorMsg.substring(0, 200)}`,
+        };
+      }
+      // 如果是网络问题，尝试镜像加速
+    }
+
+    // Step 2: 直接拉取失败，尝试国内镜像加速器
+    console.log(`[ClawTools] Docker Hub 拉取失败，尝试国内镜像加速...`);
     for (const mirror of DOCKER_MIRRORS) {
       process.stdout.write(`  尝试镜像: ${mirror}... `);
       const result = await tryDockerMirror(dockerImage, mirror);
@@ -361,37 +394,20 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
       console.log(`失败 (${result.error || '未知错误'})`);
     }
 
-    // 镜像都失败，尝试直接拉取
-    // 先清理 daemon.json 中的镜像配置
-    const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
-    let backupContent: string | null = null;
-    if (fs.existsSync(daemonJsonPath)) {
-      try {
-        backupContent = fs.readFileSync(daemonJsonPath, 'utf8');
-        // 移除镜像配置，尝试直接拉取
-        fs.unlinkSync(daemonJsonPath);
-        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
-      } catch {}
-    }
+    // Step 3: 镜像加速也失败，尝试恢复原始配置后再次尝试
+    console.log(`[ClawTools] 镜像加速失败，恢复原配置并重试...`);
+    cleanupDockerConfig(originalConfig);
 
     try {
-      console.log(`[ClawTools] 尝试直接拉取 Docker Hub...`);
+      console.log(`  再次尝试拉取 ${dockerImage}...`);
       execSync(`docker pull ${dockerImage}`, { stdio: 'pipe', timeout: 180000 });
       return {
         success: true,
         message: `OpenClaw 已就绪: docker run ${dockerImage}`,
         path: dockerImage,
       };
-    } catch (error: any) {
-      // 恢复原始 daemon.json
-      if (backupContent !== null) {
-        try {
-          fs.writeFileSync(daemonJsonPath, backupContent);
-          execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
-        } catch {}
-      }
-
-      const errorMsg = error.message || '';
+    } catch (finalError: any) {
+      const errorMsg = finalError.message || '';
       let detailMsg = errorMsg;
 
       // 给出更友好的错误提示
@@ -408,6 +424,9 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
       } else if (errorMsg.includes('unknown')) {
         detailMsg = '镜像解析失败，可能是网络或 DNS 问题，请尝试使用 VPN';
       }
+
+      // 恢复原始配置
+      cleanupDockerConfig(originalConfig);
 
       return { success: false, message: `Docker 拉取失败: ${detailMsg}` };
     }
