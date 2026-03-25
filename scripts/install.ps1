@@ -89,6 +89,14 @@ function Install-ClawTools {
     Write-Host "Installing dependencies..." -ForegroundColor Cyan
     Set-Location $InstallDir
     npm install
+
+    # Fix security vulnerabilities
+    Write-Host "Checking for security vulnerabilities..." -ForegroundColor Cyan
+    npm audit fix --force 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Security vulnerabilities fixed." -ForegroundColor Green
+    }
+
     npm run build
 
     # Create CLI wrapper
