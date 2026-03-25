@@ -1,5 +1,6 @@
-# ClawTools Installation Script for Windows
-# Usage: iwr -useb https://raw.githubusercontent.com/norviglc-rgb/clawtools/master/scripts/install.ps1 | iex
+﻿# ClawTools Installation Script for Windows
+# Usage:
+#   powershell -ExecutionPolicy Bypass -Command "[System.IO.File]::WriteAllText('$env:TEMP\clawtools_install.ps1', (Invoke-WebRequest 'https://raw.githubusercontent.com/norviglc-rgb/clawtools/master/scripts/install.ps1').Content, [System.Text.Encoding]::UTF8); & '$env:TEMP\clawtools_install.ps1'"
 
 param(
     [string]$InstallDir = "$env:USERPROFILE\.clawtools",
@@ -7,6 +8,7 @@ param(
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
@@ -82,7 +84,7 @@ function Install-ClawTools {
             git fetch origin master
             git reset --hard origin/master
         } catch {
-            Write-Host "更新失败，尝试重新克隆..." -ForegroundColor Yellow
+            Write-Host "Update failed, re-cloning..." -ForegroundColor Yellow
             Remove-Item -Recurse -Force $InstallDir
             git clone --depth 1 $RepoUrl $InstallDir
         }
