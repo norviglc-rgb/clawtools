@@ -1,4 +1,4 @@
-﻿# ClawTools Installation Script for Windows
+# ClawTools Installation Script for Windows
 # Usage:
 #   powershell -ExecutionPolicy Bypass -Command "[System.IO.File]::WriteAllText('$env:TEMP\clawtools_install.ps1', (Invoke-WebRequest 'https://raw.githubusercontent.com/norviglc-rgb/clawtools/master/scripts/install.ps1').Content, [System.Text.Encoding]::UTF8); & '$env:TEMP\clawtools_install.ps1'"
 
