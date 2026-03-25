@@ -6,6 +6,7 @@ param(
     [string]$RepoUrl = "https://github.com/norviglc-rgb/clawtools.git"
 )
 
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
