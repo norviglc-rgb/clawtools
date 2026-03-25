@@ -77,7 +77,14 @@ function Install-ClawTools {
     Write-Host "Cloning/updating ClawTools..." -ForegroundColor Cyan
     if (Test-Path "$InstallDir\.git") {
         Set-Location $InstallDir
-        git pull origin master
+        try {
+            git fetch origin master
+            git reset --hard origin/master
+        } catch {
+            Write-Host "更新失败，尝试重新克隆..." -ForegroundColor Yellow
+            Remove-Item -Recurse -Force $InstallDir
+            git clone --depth 1 $RepoUrl $InstallDir
+        }
     } else {
         if (Test-Path $InstallDir) {
             Remove-Item -Recurse -Force $InstallDir
