@@ -19,6 +19,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
   const [selectedPlatform, setSelectedPlatform] = useState<InstallPlatform>('native');
   const [dockerInfo, setDockerInfo] = useState<DockerInfo | null>(null);
   const [wslInfo, setWslInfo] = useState<WSLInfo | null>(null);
+  const [cursorIndex, setCursorIndex] = useState(0);
 
   const VERSIONS_PER_PAGE = 10;
 
@@ -90,9 +91,13 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
     const key = data.toString();
 
     if (step === 'platform') {
-      if (key === '1') handlePlatformSelect('native');
-      else if (key === '2') handlePlatformSelect('docker');
-      else if (key === '3') handlePlatformSelect('wsl');
+      if (key === '\u001b[A') { // Arrow up
+        setCursorIndex((i) => Math.max(0, i - 1));
+      } else if (key === '\u001b[B') { // Arrow down
+        setCursorIndex((i) => Math.min(platforms.length - 1, i + 1));
+      } else if (key === ' ' || key === '\r' || key === '\n') {
+        handlePlatformSelect(platforms[cursorIndex].id);
+      }
     } else if (step === 'docker-check') {
       if (key === 'r') {
         checkDockerStatus().then((info) => {
@@ -114,17 +119,22 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
         setStep('channel');
       }
     } else if (step === 'channel') {
-      if (key === '1') setSelectedChannel('stable');
-      else if (key === '2') setSelectedChannel('beta');
-      else if (key === '3') setSelectedChannel('dev');
-      else if (key === 'b') setStep('platform');
-      else if (key === 'v') {
+      if (key === '\u001b[A') { // Arrow up
+        setCursorIndex((i) => Math.max(0, i - 1));
+      } else if (key === '\u001b[B') { // Arrow down
+        setCursorIndex((i) => Math.min(channels.length - 1, i + 1));
+      } else if (key === ' ') {
+        setSelectedChannel(channels[cursorIndex].id);
+      } else if (key === '\r' || key === '\n') {
+        setSelectedChannel(channels[cursorIndex].id);
+        setSelectedVersion(null);
+        handleInstall();
+      } else if (key === 'v') {
         loadVersions();
         setSelectMode('version');
         setStep('versions');
-      } else if (key === '\r' || key === '\n') {
-        setSelectedVersion(null);
-        handleInstall();
+      } else if (key === 'b') {
+        setStep('platform');
       }
     } else if (step === 'versions') {
       if (key === '\u001b[A') { // Arrow up
@@ -156,7 +166,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
       setSelectMode('channel');
       setSelectedVersion(null);
     }
-  }, [step, selectMode, selectedChannel, versionList, versionPage, loadVersions, handlePlatformSelect, dockerInfo, wslInfo]);
+  }, [step, selectMode, selectedChannel, versionList, versionPage, loadVersions, handlePlatformSelect, dockerInfo, wslInfo, cursorIndex]);
 
   useEffect(() => {
     process.stdin.setRawMode(true);
@@ -169,30 +179,34 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
   const renderPlatformSelect = () => (
     <Box flexDirection="column" padding={1}>
-      <Text bold>OpenClaw Installation</Text>
+      <Text bold>OpenClaw 安装</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
 
       <Box marginBottom={1}>
-        <Text>Select installation platform:</Text>
+        <Text>选择安装平台:</Text>
       </Box>
-      {platforms.map((p) => (
-        <Box key={p.id} marginBottom={1}>
-          <Box width={3}>
-            <Text color={selectedPlatform === p.id ? 'cyan' : undefined}>
-              [{selectedPlatform === p.id ? 'x' : ' '}]
+      {platforms.map((p, i) => {
+        const isSelected = selectedPlatform === p.id;
+        const isCursor = cursorIndex === i;
+        return (
+          <Box key={p.id} marginBottom={1}>
+            <Box width={3}>
+              <Text color={isCursor ? 'cyan' : undefined}>
+                {isCursor ? '>' : ' '}
+              </Text>
+            </Box>
+            <Text bold color={isCursor ? 'cyan' : undefined}>
+              {p.label}
             </Text>
+            <Text dimColor> - {p.desc}</Text>
           </Box>
-          <Text bold color={selectedPlatform === p.id ? 'cyan' : undefined}>
-            {p.id === 'native' ? '1' : p.id === 'docker' ? '2' : '3'} {p.label}
-          </Text>
-          <Text dimColor> - {p.desc}</Text>
-        </Box>
-      ))}
+        );
+      })}
 
       <Box marginTop={1} marginBottom={1}>
-        <Text dimColor>Press [1/2/3] to select platform</Text>
+        <Text dimColor> [↑/↓] 导航  [空格] 选中  [回车] 确认</Text>
       </Box>
     </Box>
   );
@@ -203,35 +217,35 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold>Docker Status Check</Text>
+        <Text bold>Docker 状态检查</Text>
         <Box marginY={1}>
           <Text dimColor>─────────────────────────────────────</Text>
         </Box>
 
         {!dockerInfo ? (
-          <Text>Checking Docker status...</Text>
+          <Text>正在检查 Docker 状态...</Text>
         ) : isRunning ? (
           <>
-            <Text color="green">Docker is installed and running</Text>
-            {dockerInfo.version && <Text dimColor>Version: {dockerInfo.version}</Text>}
+            <Text color="green">Docker 已安装并正在运行</Text>
+            {dockerInfo.version && <Text dimColor>版本: {dockerInfo.version}</Text>}
             <Box marginTop={1}>
-              <Text>Press [Enter] to continue with Docker installation</Text>
+              <Text>按 [回车] 继续 Docker 安装</Text>
             </Box>
           </>
         ) : isInstalled ? (
           <>
-            <Text color="yellow">Docker is installed but not running</Text>
-            <Text dimColor>Please start Docker Desktop and try again</Text>
+            <Text color="yellow">Docker 已安装但未运行</Text>
+            <Text dimColor>请启动 Docker Desktop 后重试</Text>
             <Box marginTop={1}>
-              <Text dimColor>Press [r] to refresh | [b] to go back</Text>
+              <Text dimColor>按 [r] 刷新 | [b] 返回</Text>
             </Box>
           </>
         ) : (
           <>
-            <Text color="yellow">Docker is not installed</Text>
-            <Text dimColor>Please install Docker Desktop first</Text>
+            <Text color="yellow">Docker 未安装</Text>
+            <Text dimColor>请先安装 Docker Desktop</Text>
             <Box marginTop={1}>
-              <Text dimColor>Press [b] to go back</Text>
+              <Text dimColor>按 [b] 返回</Text>
             </Box>
           </>
         )}
@@ -244,30 +258,30 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold>WSL Status Check</Text>
+        <Text bold>WSL 状态检查</Text>
         <Box marginY={1}>
           <Text dimColor>─────────────────────────────────────</Text>
         </Box>
 
         {!wslInfo ? (
-          <Text>Checking WSL status...</Text>
+          <Text>正在检查 WSL 状态...</Text>
         ) : isInstalled ? (
           <>
-            <Text color="green">WSL is installed</Text>
-            {wslInfo.version && <Text dimColor>Version: WSL {wslInfo.version}</Text>}
+            <Text color="green">WSL 已安装</Text>
+            {wslInfo.version && <Text dimColor>版本: WSL {wslInfo.version}</Text>}
             {wslInfo.distros.length > 0 && (
-              <Text dimColor>Distros: {wslInfo.distros.join(', ')}</Text>
+              <Text dimColor>发行版: {wslInfo.distros.join(', ')}</Text>
             )}
             <Box marginTop={1}>
-              <Text>Press [Enter] to continue with WSL installation</Text>
+              <Text>按 [回车] 继续 WSL 安装</Text>
             </Box>
           </>
         ) : (
           <>
-            <Text color="yellow">WSL is not installed</Text>
-            <Text dimColor>Please install WSL first (run: wsl --install)</Text>
+            <Text color="yellow">WSL 未安装</Text>
+            <Text dimColor>请先安装 WSL (运行: wsl --install)</Text>
             <Box marginTop={1}>
-              <Text dimColor>Press [b] to go back</Text>
+              <Text dimColor>按 [b] 返回</Text>
             </Box>
           </>
         )}
@@ -277,34 +291,38 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
   const renderChannelSelect = () => (
     <Box flexDirection="column" padding={1}>
-      <Text bold>OpenClaw Installation</Text>
+      <Text bold>OpenClaw 安装</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
 
       <Box marginBottom={1}>
-        <Text>Platform: {selectedPlatform === 'native' ? 'Native Windows' : selectedPlatform === 'docker' ? 'Docker' : 'WSL'}</Text>
+        <Text>平台: {selectedPlatform === 'native' ? '原生 Windows' : selectedPlatform === 'docker' ? 'Docker' : 'WSL'}</Text>
       </Box>
 
       <Box marginBottom={1}>
-        <Text>Select version channel:</Text>
+        <Text>选择版本通道:</Text>
       </Box>
-      {channels.map((ch) => (
-        <Box key={ch.id} marginBottom={1}>
-          <Box width={3}>
-            <Text color={selectedChannel === ch.id ? 'cyan' : undefined}>
-              [{selectedChannel === ch.id ? 'x' : ' '}]
+      {channels.map((ch, i) => {
+        const isSelected = selectedChannel === ch.id;
+        const isCursor = cursorIndex === i;
+        return (
+          <Box key={ch.id} marginBottom={1}>
+            <Box width={3}>
+              <Text color={isCursor ? 'cyan' : undefined}>
+                {isCursor ? '>' : ' '}
+              </Text>
+            </Box>
+            <Text bold color={isCursor ? 'cyan' : undefined}>
+              {ch.label}
             </Text>
+            <Text dimColor> - {ch.desc}</Text>
           </Box>
-          <Text bold color={selectedChannel === ch.id ? 'cyan' : undefined}>
-            {ch.id === 'stable' ? '1' : ch.id === 'beta' ? '2' : '3'} {ch.label}
-          </Text>
-          <Text dimColor> - {ch.desc}</Text>
-        </Box>
-      ))}
+        );
+      })}
 
       <Box marginTop={1} marginBottom={1}>
-        <Text dimColor>Press [v] for specific version | [b] back | [Enter] to install</Text>
+        <Text dimColor>[v] 指定版本 | [b] 返回 | [回车] 安装</Text>
       </Box>
     </Box>
   );
@@ -316,17 +334,17 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold>Select OpenClaw Version</Text>
+        <Text bold>选择 OpenClaw 版本</Text>
         <Box marginY={1}>
           <Text dimColor>─────────────────────────────────────</Text>
         </Box>
 
         {loadingVersions ? (
-          <Text>Loading versions...</Text>
+          <Text>正在加载版本...</Text>
         ) : (
           <>
             <Box marginBottom={1}>
-              <Text dimColor>Use [up/down] arrows to navigate, [Enter] to select</Text>
+              <Text dimColor>[↑/↓] 导航 | [空格] 选中 | [回车] 确认</Text>
             </Box>
             {pageVersions.map((v, i) => {
               const globalIdx = startIdx + i;
@@ -355,7 +373,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
             <Box marginTop={1}>
               <Text dimColor>
-                Page {versionPage + 1}/{totalPages} | Press [c] for channel select
+                第 {versionPage + 1}/{totalPages} 页 | [c] 返回通道选择
               </Text>
             </Box>
           </>
@@ -366,26 +384,26 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
   const renderInstalling = () => (
     <Box flexDirection="column" padding={1}>
-      <Text bold>Installing OpenClaw...</Text>
+      <Text bold>正在安装 OpenClaw...</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
       <Text>{message}</Text>
       <Box marginTop={1}>
-        <Text dimColor>Please wait...</Text>
+        <Text dimColor>请稍候...</Text>
       </Box>
     </Box>
   );
 
   const renderDone = () => (
     <Box flexDirection="column" padding={1}>
-      <Text bold>Installation Complete</Text>
+      <Text bold>安装完成</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
       <Text>{message}</Text>
       <Box marginTop={1}>
-        <Text dimColor>Press [Enter] to continue</Text>
+        <Text dimColor>按 [回车] 继续</Text>
       </Box>
     </Box>
   );
