@@ -278,6 +278,17 @@ const DOCKER_MIRRORS = [
 async function tryDockerMirror(image: string, mirror: string): Promise<{ success: boolean; error?: string }> {
   const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
 
+  // 辅助函数：安全地重启 Docker 服务（不抛出异常）
+  const safeRestartDockerService = () => {
+    try {
+      // 忽略输出，避免泄露给用户
+      execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+    } catch {
+      // 服务重启失败不要慌，可能是 Docker Desktop 不是通过服务运行的
+      // 镜像配置已经写入，用户重启 Docker Desktop 即可生效
+    }
+  };
+
   try {
     // Windows 配置 Docker 镜像加速器
     if (process.platform === 'win32') {
@@ -286,8 +297,8 @@ async function tryDockerMirror(image: string, mirror: string): Promise<{ success
       };
       fs.mkdirSync(path.dirname(daemonJsonPath), { recursive: true });
       fs.writeFileSync(daemonJsonPath, JSON.stringify(daemonConfig, null, 2));
-      // 重启 Docker 服务使配置生效
-      execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+      // 尝试重启 Docker 服务（失败不抛出异常）
+      safeRestartDockerService();
     } else {
       // Linux/Mac 配置
       const registry = mirror.replace(/\/$/, '');
@@ -303,7 +314,7 @@ async function tryDockerMirror(image: string, mirror: string): Promise<{ success
       if (fs.existsSync(daemonJsonPath)) {
         fs.unlinkSync(daemonJsonPath);
       }
-      execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+      safeRestartDockerService();
     } catch {}
 
     // 提取有意义的错误信息
@@ -356,9 +367,14 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
         } else if (fs.existsSync(daemonJsonPath)) {
           fs.unlinkSync(daemonJsonPath);
         }
-        // 只有 Docker 在运行时才重启服务
+        // 只有 Docker 在运行时才重启服务（失败不抛出异常）
         if (isDockerRunning()) {
-          execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+          try {
+            execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+          } catch {
+            // 服务重启失败，可能是 Docker Desktop 不是通过服务运行的
+            // 配置已清理，用户重启 Docker Desktop 即可
+          }
         }
       } catch {}
     };
