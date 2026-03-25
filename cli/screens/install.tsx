@@ -26,8 +26,6 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
     { id: 'wsl', label: 'WSL', desc: '在 Windows 子系统 for Linux 中安装' },
   ];
 
-  const VERSIONS_PER_PAGE = 10;
-
   const loadVersions = useCallback(async () => {
     setLoadingVersions(true);
     const result = await getVersionList();
