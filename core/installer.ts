@@ -330,6 +330,24 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
     const dockerImage = `openclaw/openclaw:${versionSpec}`;
     const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
 
+    // 检查 Docker 是否运行
+    const isDockerRunning = (): boolean => {
+      try {
+        execSync('docker info', { stdio: 'pipe', timeout: 5000 });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    // 如果 Docker 未运行，直接返回错误
+    if (!isDockerRunning()) {
+      return {
+        success: false,
+        message: 'Docker Desktop 未启动，请先启动 Docker Desktop',
+      };
+    }
+
     // 清理函数：恢复 Docker 到干净状态
     const cleanupDockerConfig = (originalContent: string | null) => {
       try {
@@ -338,8 +356,10 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
         } else if (fs.existsSync(daemonJsonPath)) {
           fs.unlinkSync(daemonJsonPath);
         }
-        // 重启 Docker 服务
-        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+        // 只有 Docker 在运行时才重启服务
+        if (isDockerRunning()) {
+          execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+        }
       } catch {}
     };
 
