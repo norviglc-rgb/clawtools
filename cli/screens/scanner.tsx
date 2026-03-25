@@ -20,7 +20,7 @@ export function ScannerScreen() {
         runScan();
       } else if (step === 'authorize' && (key === 'n' || key === 'N' || key === '\x1b')) {
         setStep('error');
-        setError('Scan cancelled by user');
+        setError('扫描被用户取消');
       }
     };
 
@@ -64,40 +64,40 @@ export function ScannerScreen() {
 
   const renderAuthorizeStep = () => (
     <Box flexDirection="column" padding={1}>
-      <Text bold>Security Scan Authorization</Text>
+      <Text bold>安全扫描授权</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
       <Box flexDirection="column" marginBottom={1}>
-        <Text>Before running the security scan, please note:</Text>
+        <Text>运行安全扫描前，请注意:</Text>
       </Box>
       <Box flexDirection="column" marginBottom={1}>
-        <Text color="cyan">1. This scan will check firewall status</Text>
-        <Text color="cyan">2. It will scan common ports on localhost</Text>
-        <Text color="cyan">3. No data is sent to external servers</Text>
-        <Text color="cyan">4. Only local network interfaces are scanned</Text>
+        <Text color="cyan">1. 此扫描将检查防火墙状态</Text>
+        <Text color="cyan">2. 它将扫描本地主机上的常见端口</Text>
+        <Text color="cyan">3. 不会向外部服务器发送数据</Text>
+        <Text color="cyan">4. 仅扫描本地网络接口</Text>
       </Box>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
-      <Text bold>Do you want to proceed? [Y/n]</Text>
+      <Text bold>是否继续? [Y/n]</Text>
       <Box marginTop={1}>
-        <Text dimColor>Press [Y] to start scan, [n] or [Esc] to cancel</Text>
+        <Text dimColor>按 [Y] 开始扫描 | [n] 或 [Esc] 取消</Text>
       </Box>
     </Box>
   );
 
   const renderScanningStep = () => (
     <Box flexDirection="column" padding={1}>
-      <Text bold>Security Scan in Progress</Text>
+      <Text bold>正在执行安全扫描</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
-      <Text>Scanning firewall status...</Text>
-      <Text>Scanning common ports...</Text>
-      <Text>Analyzing security issues...</Text>
+      <Text>正在扫描防火墙状态...</Text>
+      <Text>正在扫描常见端口...</Text>
+      <Text>正在分析安全问题...</Text>
       <Box marginTop={1}>
-        <Text dimColor>Please wait...</Text>
+        <Text dimColor>请稍候...</Text>
       </Box>
     </Box>
   );
@@ -107,17 +107,17 @@ export function ScannerScreen() {
 
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold>Security Scan Results</Text>
+        <Text bold>安全扫描结果</Text>
         <Box marginY={1}>
           <Text dimColor>─────────────────────────────────────</Text>
         </Box>
 
         <Box flexDirection="column" marginBottom={1}>
-          <Text bold>Firewall Status</Text>
+          <Text bold>防火墙状态</Text>
           <Text color={results.firewall.enabled ? 'green' : 'yellow'}>
             {results.firewall.enabled
-              ? `Enabled (${results.firewall.platform})`
-              : 'Disabled or Unknown'}
+              ? `已启用 (${results.firewall.platform})`
+              : '已禁用或未知'}
           </Text>
         </Box>
 
@@ -126,13 +126,13 @@ export function ScannerScreen() {
         </Box>
 
         <Box flexDirection="column" marginBottom={1}>
-          <Text bold>Open Ports ({results.ports.length})</Text>
+          <Text bold>开放端口 ({results.ports.length})</Text>
           {results.ports.length === 0 ? (
-            <Text dimColor>No common ports are open</Text>
+            <Text dimColor>没有开放的常见端口</Text>
           ) : (
             results.ports.map((port: PortScanResult) => (
               <Text key={port.port} color="cyan">
-                Port {port.port} ({port.service})
+                端口 {port.port} ({port.service})
               </Text>
             ))
           )}
@@ -143,9 +143,9 @@ export function ScannerScreen() {
         </Box>
 
         <Box flexDirection="column" marginBottom={1}>
-          <Text bold>Security Issues ({results.securityIssues.length})</Text>
+          <Text bold>安全问题 ({results.securityIssues.length})</Text>
           {results.securityIssues.length === 0 ? (
-            <Text color="green">No security issues detected</Text>
+            <Text color="green">未检测到安全问题</Text>
           ) : (
             results.securityIssues.map((issue: SecurityIssue) => (
               <Box key={issue.id} marginBottom={1} flexDirection="column">
@@ -159,7 +159,7 @@ export function ScannerScreen() {
                 </Box>
                 <Box paddingLeft={3} flexDirection="column">
                   <Text dimColor>{issue.description}</Text>
-                  <Text color="green">Recommendation: {issue.recommendation}</Text>
+                  <Text color="green">建议: {issue.recommendation}</Text>
                 </Box>
               </Box>
             ))
@@ -171,8 +171,8 @@ export function ScannerScreen() {
         </Box>
 
         <Box flexDirection="column">
-          <Text dimColor>Scan timestamp: {results.timestamp}</Text>
-          <Text dimColor>Authorization: {results.authorized.scanType} scan</Text>
+          <Text dimColor>扫描时间: {results.timestamp}</Text>
+          <Text dimColor>授权: {results.authorized.scanType} 扫描</Text>
         </Box>
       </Box>
     );
@@ -180,13 +180,13 @@ export function ScannerScreen() {
 
   const renderErrorStep = () => (
     <Box flexDirection="column" padding={1}>
-      <Text bold color="red">Security Scan</Text>
+      <Text bold color="red">安全扫描</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
       <Text color="red">{error}</Text>
       <Box marginTop={1}>
-        <Text dimColor>Press [Esc] to go back</Text>
+        <Text dimColor>按 [Esc] 返回</Text>
       </Box>
     </Box>
   );

@@ -24,7 +24,7 @@ export function ConfigScreen() {
 
   const handleSaveApiKey = () => {
     if (!apiKey.trim()) {
-      setMessage('API key cannot be empty');
+      setMessage('API 密钥不能为空');
       return;
     }
 
@@ -39,7 +39,7 @@ export function ConfigScreen() {
         defaultModel: provider.defaultModel || null,
         enabled: true,
       });
-      setMessage(`API key saved for ${provider.name}`);
+      setMessage(`已保存 ${provider.name} 的 API 密钥`);
     } else {
       db.addProvider({
         providerId: selectedProvider,
@@ -49,7 +49,7 @@ export function ConfigScreen() {
         defaultModel: null,
         enabled: true,
       });
-      setMessage(`API key saved for ${selectedProvider}`);
+      setMessage(`已保存 ${selectedProvider} 的 API 密钥`);
     }
 
     setApiKey('');
@@ -93,7 +93,7 @@ export function ConfigScreen() {
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Text bold>Provider Configuration</Text>
+      <Text bold>提供商配置</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
@@ -101,7 +101,7 @@ export function ConfigScreen() {
       {step === 'menu' && (
         <>
           <Box marginBottom={1}>
-            <Text>Select a provider to configure:</Text>
+            <Text>选择要配置的提供商:</Text>
           </Box>
           {uniqueProviders.map((providerId, index) => {
             const preset = presetProviders.find(p => p.id === providerId);
@@ -113,22 +113,22 @@ export function ConfigScreen() {
                   <Text color="cyan">{index + 1}</Text>
                 </Box>
                 <Text bold>{preset?.name || providerId}</Text>
-                {saved && <Text dimColor> (configured)</Text>}
+                {saved && <Text dimColor> (已配置)</Text>}
               </Box>
             );
           })}
           <Box marginTop={1}>
-            <Text dimColor>Press [1-{uniqueProviders.length}] to select, [q] to quit</Text>
+            <Text dimColor>按 [1-{uniqueProviders.length}] 选择 | [q] 退出</Text>
           </Box>
         </>
       )}
 
       {step === 'enter-apikey' && (
         <>
-          <Text>Configuring: </Text>
+          <Text>正在配置: </Text>
           <Text bold color="cyan">{selectedProvider}</Text>
           <Box marginY={1}>
-            <Text>Enter API Key (press Enter to save):</Text>
+            <Text>输入 API 密钥 (按回车保存):</Text>
           </Box>
           <Box>
             <Text>{apiKey.replace(/./g, '*')}</Text>
@@ -141,7 +141,7 @@ export function ConfigScreen() {
         <>
           <Text color="green">{message}</Text>
           <Box marginTop={1}>
-            <Text dimColor>Press any key to continue</Text>
+            <Text dimColor>按任意键继续</Text>
           </Box>
         </>
       )}

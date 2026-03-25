@@ -21,7 +21,7 @@ export function SearchScreen() {
   }, []);
 
   const handleCloneDocs = async () => {
-    setMessage('Cloning OpenClaw documentation...');
+    setMessage('正在克隆 OpenClaw 文档...');
     setStep('searching');
 
     const success = await docSearch.cloneDocs();
@@ -30,10 +30,10 @@ export function SearchScreen() {
       await docSearch.buildIndex();
       docSearch.saveIndex();
       db.updateAppConfig({ docsCloned: true, docsCloneDate: new Date().toISOString() });
-      setMessage('Documentation cloned and indexed successfully!');
+      setMessage('文档克隆和索引成功!');
       setNeedsClone(false);
     } else {
-      setMessage('Failed to clone documentation');
+      setMessage('克隆文档失败');
     }
 
     setStep('done');
@@ -41,7 +41,7 @@ export function SearchScreen() {
 
   const handleSearch = () => {
     if (!query.trim()) {
-      setMessage('Please enter a search query');
+      setMessage('请输入搜索查询');
       return;
     }
 
@@ -92,19 +92,19 @@ export function SearchScreen() {
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Text bold>Documentation Search</Text>
+      <Text bold>文档搜索</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
 
       {needsClone && step === 'menu' && (
         <>
-          <Text>OpenClaw documentation needs to be cloned first.</Text>
+          <Text>需要先克隆 OpenClaw 文档。</Text>
           <Box marginY={1}>
-            <Text dimColor>This will download the docs to ~/.clawtools/docs</Text>
+            <Text dimColor>这会将文档下载到 ~/.clawtools/docs</Text>
           </Box>
           <Box marginTop={1}>
-            <Text>Press [Enter] to clone documentation</Text>
+            <Text>按 [回车] 克隆文档</Text>
           </Box>
         </>
       )}
@@ -112,27 +112,27 @@ export function SearchScreen() {
       {!needsClone && step === 'menu' && (
         <>
           <Box marginBottom={1}>
-            <Text>Search query:</Text>
+            <Text>搜索查询:</Text>
           </Box>
           <Box>
             <Text>{'>'} {query}</Text>
             <Text dimColor> █</Text>
           </Box>
           <Box marginTop={1}>
-            <Text dimColor>Type your query and press [Enter] to search</Text>
+            <Text dimColor>输入查询后按 [回车] 搜索</Text>
           </Box>
         </>
       )}
 
       {step === 'searching' && (
-        <Text>{message || 'Processing...'}</Text>
+        <Text>{message || '处理中...'}</Text>
       )}
 
       {step === 'done' && (
         <>
           <Text>{message}</Text>
           <Box marginTop={1}>
-            <Text dimColor>Press any key to continue</Text>
+            <Text dimColor>按任意键继续</Text>
           </Box>
         </>
       )}
@@ -143,7 +143,7 @@ export function SearchScreen() {
             <>
               <Box marginBottom={1}>
                 <Text>
-                  Found {results.length} result(s):
+                  找到 {results.length} 个结果:
                 </Text>
               </Box>
               {results.map((result, index) => (
@@ -162,16 +162,16 @@ export function SearchScreen() {
               ))}
             </>
           ) : (
-            <Text>No results found for "{query}"</Text>
+            <Text>没有找到 "{query}" 的结果</Text>
           )}
           <Box marginTop={1}>
-            <Text dimColor>Press any key to search again</Text>
+            <Text dimColor>按任意键继续搜索</Text>
           </Box>
         </>
       )}
 
       <Box marginTop={1}>
-        <Text dimColor>Press [Esc] to go back</Text>
+        <Text dimColor>按 [Esc] 返回</Text>
       </Box>
     </Box>
   );

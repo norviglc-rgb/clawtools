@@ -2,15 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text } from 'ink';
 import { SystemInfo, DockerInfo, WSLInfo } from '../../core/detector';
 import { checkDockerStatus, checkWSLStatus } from '../../core/detector';
-import { installOpenClaw, getVersionList, InstallChannel, InstallMethod, InstallPlatform, VersionInfo } from '../../core/installer';
+import { installOpenClaw, getVersionList, InstallPlatform, VersionInfo } from '../../core/installer';
 
-type InstallStep = 'platform' | 'channel' | 'versions' | 'docker-check' | 'wsl-check' | 'installing' | 'done';
-type SelectMode = 'channel' | 'version';
+type InstallStep = 'platform' | 'versions' | 'docker-check' | 'wsl-check' | 'installing' | 'done';
 
 export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
   const [step, setStep] = useState<InstallStep>('platform');
-  const [selectMode, setSelectMode] = useState<SelectMode>('channel');
-  const [selectedChannel, setSelectedChannel] = useState<InstallChannel>('stable');
   const [selectedVersion, setSelectedVersion] = useState<VersionInfo | null>(null);
   const [versionList, setVersionList] = useState<VersionInfo[]>([]);
   const [versionPage, setVersionPage] = useState(0);
@@ -24,24 +21,12 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
   const VERSIONS_PER_PAGE = 10;
 
   const platforms: { id: InstallPlatform; label: string; desc: string }[] = [
-    { id: 'native', label: 'Native Windows', desc: 'Install directly on Windows (recommended)' },
-    { id: 'docker', label: 'Docker', desc: 'Run via Docker container (auto-detect Docker)' },
-    { id: 'wsl', label: 'WSL', desc: 'Install inside Windows Subsystem for Linux' },
+    { id: 'native', label: '原生 Windows', desc: '直接在 Windows 上安装（推荐）' },
+    { id: 'docker', label: 'Docker', desc: '通过 Docker 容器运行（自动检测 Docker）' },
+    { id: 'wsl', label: 'WSL', desc: '在 Windows 子系统 for Linux 中安装' },
   ];
 
-  const channels: { id: InstallChannel; label: string; desc: string }[] = [
-    { id: 'stable', label: 'Stable', desc: 'Latest stable release (recommended)' },
-    { id: 'beta', label: 'Beta', desc: 'Pre-release with new features' },
-    { id: 'dev', label: 'Dev', desc: 'Development build (unstable)' },
-  ];
-
-  const installMethods: { id: InstallMethod; label: string; desc: string }[] = [
-    { id: 'npm', label: 'NPM', desc: 'Install via npm (recommended)' },
-    { id: 'script', label: 'Script', desc: 'Official install script' },
-    { id: 'docker', label: 'Docker', desc: 'Run via Docker container' },
-  ];
-
-  const [selectedMethod, setSelectedMethod] = useState<InstallMethod>('npm');
+  const VERSIONS_PER_PAGE = 10;
 
   const loadVersions = useCallback(async () => {
     setLoadingVersions(true);
@@ -54,13 +39,13 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
   const handleInstall = async () => {
     setStep('installing');
-    const versionToInstall = selectedVersion?.version || selectedChannel;
+    const versionToInstall = selectedVersion?.version || 'stable';
 
-    setMessage(`Installing OpenClaw (${versionToInstall})...`);
+    setMessage(`正在安装 OpenClaw (${versionToInstall})...`);
 
     const result = await installOpenClaw({
-      method: selectedMethod,
-      channel: selectedChannel,
+      method: 'npm',
+      channel: 'stable',
       platform: selectedPlatform,
       version: selectedVersion?.version,
     });
@@ -83,7 +68,8 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
         setWslInfo(info);
       });
     } else {
-      setStep('channel');
+      // native - directly install
+      handleInstall();
     }
   }, []);
 
@@ -97,6 +83,9 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
         setCursorIndex((i) => Math.min(platforms.length - 1, i + 1));
       } else if (key === ' ' || key === '\r' || key === '\n') {
         handlePlatformSelect(platforms[cursorIndex].id);
+      } else if (key === 'v') {
+        loadVersions();
+        setStep('versions');
       }
     } else if (step === 'docker-check') {
       if (key === 'r') {
@@ -106,7 +95,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
       } else if (key === 'b') {
         setStep('platform');
       } else if (dockerInfo?.running && (key === '\r' || key === '\n')) {
-        setStep('channel');
+        handleInstall();
       }
     } else if (step === 'wsl-check') {
       if (key === 'r') {
@@ -116,25 +105,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
       } else if (key === 'b') {
         setStep('platform');
       } else if (wslInfo?.installed && (key === '\r' || key === '\n')) {
-        setStep('channel');
-      }
-    } else if (step === 'channel') {
-      if (key === '\u001b[A') { // Arrow up
-        setCursorIndex((i) => Math.max(0, i - 1));
-      } else if (key === '\u001b[B') { // Arrow down
-        setCursorIndex((i) => Math.min(channels.length - 1, i + 1));
-      } else if (key === ' ') {
-        setSelectedChannel(channels[cursorIndex].id);
-      } else if (key === '\r' || key === '\n') {
-        setSelectedChannel(channels[cursorIndex].id);
-        setSelectedVersion(null);
         handleInstall();
-      } else if (key === 'v') {
-        loadVersions();
-        setSelectMode('version');
-        setStep('versions');
-      } else if (key === 'b') {
-        setStep('platform');
       }
     } else if (step === 'versions') {
       if (key === '\u001b[A') { // Arrow up
@@ -145,28 +116,22 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
         const idx = versionPage * VERSIONS_PER_PAGE;
         if (versionList[idx]) {
           setSelectedVersion(versionList[idx]);
-          setSelectedChannel(versionList[idx].channel);
           handleInstall();
         }
-      } else if (key === 'c') {
-        setSelectMode('channel');
-        setStep('channel');
       } else if (key === 'b') {
         setStep('platform');
       } else if (key >= '1' && key <= '9') {
         const idx = (versionPage * VERSIONS_PER_PAGE) + (parseInt(key) - 1);
         if (versionList[idx]) {
           setSelectedVersion(versionList[idx]);
-          setSelectedChannel(versionList[idx].channel);
           handleInstall();
         }
       }
-    } else if (step === 'done' && (key === '\r' || key === '\n')) {
-      setStep('platform');
-      setSelectMode('channel');
-      setSelectedVersion(null);
+    } else if (step === 'done' && (key === '\r' || key === '\n' || key === '\x1b')) {
+      // Exit screen, return to main menu
+      process.exit(0);
     }
-  }, [step, selectMode, selectedChannel, versionList, versionPage, loadVersions, handlePlatformSelect, dockerInfo, wslInfo, cursorIndex]);
+  }, [step, versionList, versionPage, loadVersions, handlePlatformSelect, dockerInfo, wslInfo, cursorIndex]);
 
   useEffect(() => {
     process.stdin.setRawMode(true);
@@ -206,7 +171,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
       })}
 
       <Box marginTop={1} marginBottom={1}>
-        <Text dimColor> [↑/↓] 导航  [空格] 选中  [回车] 确认</Text>
+        <Text dimColor>[↑/↓] 导航 | [空格/回车] 选择并安装 | [v] 指定版本</Text>
       </Box>
     </Box>
   );
@@ -289,44 +254,6 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
     );
   };
 
-  const renderChannelSelect = () => (
-    <Box flexDirection="column" padding={1}>
-      <Text bold>OpenClaw 安装</Text>
-      <Box marginY={1}>
-        <Text dimColor>─────────────────────────────────────</Text>
-      </Box>
-
-      <Box marginBottom={1}>
-        <Text>平台: {selectedPlatform === 'native' ? '原生 Windows' : selectedPlatform === 'docker' ? 'Docker' : 'WSL'}</Text>
-      </Box>
-
-      <Box marginBottom={1}>
-        <Text>选择版本通道:</Text>
-      </Box>
-      {channels.map((ch, i) => {
-        const isSelected = selectedChannel === ch.id;
-        const isCursor = cursorIndex === i;
-        return (
-          <Box key={ch.id} marginBottom={1}>
-            <Box width={3}>
-              <Text color={isCursor ? 'cyan' : undefined}>
-                {isCursor ? '>' : ' '}
-              </Text>
-            </Box>
-            <Text bold color={isCursor ? 'cyan' : undefined}>
-              {ch.label}
-            </Text>
-            <Text dimColor> - {ch.desc}</Text>
-          </Box>
-        );
-      })}
-
-      <Box marginTop={1} marginBottom={1}>
-        <Text dimColor>[v] 指定版本 | [b] 返回 | [回车] 安装</Text>
-      </Box>
-    </Box>
-  );
-
   const renderVersionSelect = () => {
     const startIdx = versionPage * VERSIONS_PER_PAGE;
     const pageVersions = versionList.slice(startIdx, startIdx + VERSIONS_PER_PAGE);
@@ -344,12 +271,13 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
         ) : (
           <>
             <Box marginBottom={1}>
-              <Text dimColor>[↑/↓] 导航 | [空格] 选中 | [回车] 确认</Text>
+              <Text dimColor>[↑/↓] 导航 | [回车] 选择版本 | [b] 返回</Text>
             </Box>
             {pageVersions.map((v, i) => {
               const globalIdx = startIdx + i;
               const isSelected = selectedVersion?.version === v.version;
               const channelColor = v.channel === 'stable' ? 'green' : v.channel === 'beta' ? 'yellow' : 'red';
+              const channelLabel = v.channel === 'stable' ? '稳定版' : v.channel === 'beta' ? '测试版' : '开发版';
               return (
                 <Box key={v.version} marginBottom={1}>
                   <Box width={3}>
@@ -365,15 +293,15 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
                       v{v.version}
                     </Text>
                   </Box>
-                  <Text color={channelColor}>[{v.channel}]</Text>
-                  {v.isLatest && <Text dimColor> (latest)</Text>}
+                  <Text color={channelColor}>[{channelLabel}]</Text>
+                  {v.isLatest && <Text dimColor> (最新)</Text>}
                 </Box>
               );
             })}
 
             <Box marginTop={1}>
               <Text dimColor>
-                第 {versionPage + 1}/{totalPages} 页 | [c] 返回通道选择
+                第 {versionPage + 1}/{totalPages} 页 | [b] 返回平台选择
               </Text>
             </Box>
           </>
@@ -403,7 +331,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
       </Box>
       <Text>{message}</Text>
       <Box marginTop={1}>
-        <Text dimColor>按 [回车] 继续</Text>
+        <Text dimColor>按 [回车] 返回主菜单</Text>
       </Box>
     </Box>
   );
@@ -413,7 +341,6 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
       {step === 'platform' && renderPlatformSelect()}
       {step === 'docker-check' && renderDockerCheck()}
       {step === 'wsl-check' && renderWSLCheck()}
-      {step === 'channel' && renderChannelSelect()}
       {step === 'versions' && renderVersionSelect()}
       {step === 'installing' && renderInstalling()}
       {step === 'done' && renderDone()}

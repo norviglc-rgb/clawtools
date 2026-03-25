@@ -39,26 +39,26 @@ export function DoctorScreen() {
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Text bold>OpenClaw Diagnostics</Text>
+      <Text bold>OpenClaw 诊断</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
 
       {step === 'running' && (
-        <Text>Running diagnostics...</Text>
+        <Text>正在运行诊断...</Text>
       )}
 
       {step === 'results' && results && (
         <>
           <Box flexDirection="column" marginBottom={1}>
             <Text>
-              <Text dimColor>Summary: </Text>
-              <Text color="green">{results.summary.passed} passed</Text>
+              <Text dimColor>概要: </Text>
+              <Text color="green">{results.summary.passed} 通过</Text>
               {results.summary.warnings > 0 && (
-                <Text color="yellow"> • {results.summary.warnings} warnings</Text>
+                <Text color="yellow"> • {results.summary.warnings} 警告</Text>
               )}
               {results.summary.errors > 0 && (
-                <Text color="red"> • {results.summary.errors} errors</Text>
+                <Text color="red"> • {results.summary.errors} 错误</Text>
               )}
             </Text>
           </Box>
@@ -77,7 +77,7 @@ export function DoctorScreen() {
                 <Box paddingLeft={3} flexDirection="column">
                   <Text dimColor>{item.message}</Text>
                   {item.fix && (
-                    <Text color="cyan">Fix: {item.fix}</Text>
+                    <Text color="cyan">修复: {item.fix}</Text>
                   )}
                 </Box>
               </Box>
@@ -85,13 +85,13 @@ export function DoctorScreen() {
           </Box>
 
           <Box marginTop={1}>
-            <Text dimColor>Timestamp: {results.timestamp}</Text>
+            <Text dimColor>时间戳: {results.timestamp}</Text>
           </Box>
         </>
       )}
 
       <Box marginTop={1}>
-        <Text dimColor>Press [Enter] to run openclaw doctor, [Esc] to go back</Text>
+        <Text dimColor>按 [回车] 重新诊断 | [Esc] 返回</Text>
       </Box>
     </Box>
   );

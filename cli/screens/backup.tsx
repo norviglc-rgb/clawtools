@@ -18,7 +18,7 @@ export function BackupScreen() {
 
   const handleCreateBackup = async () => {
     setStep('creating');
-    setMessage('Creating backup...');
+    setMessage('正在创建备份...');
 
     const options: BackupOptions = {
       includeConfig: true,
@@ -30,10 +30,10 @@ export function BackupScreen() {
     const result = await backupManager.createBackup(options);
 
     if (result.success) {
-      setMessage(`Backup created: ${result.backupPath} (${formatSize(result.size || 0)})`);
+      setMessage(`备份已创建: ${result.backupPath} (${formatSize(result.size || 0)})`);
       setBackups(backupManager.listBackups());
     } else {
-      setMessage(`Backup failed: ${result.message}`);
+      setMessage(`备份失败: ${result.message}`);
     }
 
     setStep('done');
@@ -41,7 +41,7 @@ export function BackupScreen() {
 
   const handleRestoreBackup = async (backupPath: string) => {
     setStep('restoring');
-    setMessage('Restoring backup...');
+    setMessage('正在恢复备份...');
 
     const result = await backupManager.restoreBackup(backupPath);
 
@@ -92,7 +92,7 @@ export function BackupScreen() {
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Text bold>Backup & Restore</Text>
+      <Text bold>备份与恢复</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
@@ -103,22 +103,22 @@ export function BackupScreen() {
             <Box width={3}>
               <Text color="cyan">[1]</Text>
             </Box>
-            <Text bold> Create Backup</Text>
-            <Text dimColor> - Backup all OpenClaw data</Text>
+            <Text bold> 创建备份</Text>
+            <Text dimColor> - 备份所有 OpenClaw 数据</Text>
           </Box>
 
           <Box marginBottom={2}>
             <Box width={3}>
               <Text color="cyan">[2]</Text>
             </Box>
-            <Text bold> Restore</Text>
-            <Text dimColor> - Restore from backup</Text>
+            <Text bold> 恢复</Text>
+            <Text dimColor> - 从备份恢复</Text>
           </Box>
 
           {backups.length > 0 && (
             <>
               <Box marginBottom={1}>
-                <Text dimColor>Recent backups:</Text>
+                <Text dimColor>最近的备份:</Text>
               </Box>
               {backups.slice(0, 5).map((backup, index) => {
                 const filename = backup.path.split(/[/\\]/).pop() || backup.path;
@@ -134,7 +134,7 @@ export function BackupScreen() {
           )}
 
           {backups.length === 0 && (
-            <Text dimColor>No backups found</Text>
+            <Text dimColor>没有找到备份</Text>
           )}
         </>
       )}
@@ -151,13 +151,13 @@ export function BackupScreen() {
         <>
           <Text>{message}</Text>
           <Box marginTop={1}>
-            <Text dimColor>Press any key to continue</Text>
+            <Text dimColor>按任意键继续</Text>
           </Box>
         </>
       )}
 
       <Box marginTop={1}>
-        <Text dimColor>Press [1] create, [2] restore, [Esc] go back</Text>
+        <Text dimColor>按 [1] 创建 | [2] 恢复 | [Esc] 返回</Text>
       </Box>
     </Box>
   );
