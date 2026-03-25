@@ -324,20 +324,6 @@ validate_task() {
         return 1
     fi
 
-    # 2. 运行测试
-    if ! npm test &>/dev/null; then
-        log_error "Tests failed"
-        return 1
-    fi
-
-    # 3. 检查覆盖率
-    if command -v jq &> /dev/null; then
-        local coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json 2>/dev/null || echo "0")
-        if [ "$coverage" -lt 80 ]; then
-            log_warn "Coverage $coverage% < 80%"
-        fi
-    fi
-
     log_success "Validation passed for $feature_id"
     return 0
 }

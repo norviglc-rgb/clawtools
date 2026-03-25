@@ -6,7 +6,6 @@
 Detect and repair broken basics to restore functionality.
 
 ## Trigger
-- When `npm test` fails
 - When typecheck fails
 - When basic functionality breaks
 

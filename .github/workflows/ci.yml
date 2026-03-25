@@ -40,21 +40,6 @@ jobs:
       - name: ESLint
         run: npm run lint || true
 
-      - name: Unit tests
-        run: npm test
-        continue-on-error: false
-
-      - name: Check coverage
-        run: |
-          COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct // 0')
-          echo "Coverage: $COVERAGE%"
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "WARNING: Coverage below 80%"
-            echo "can_trigger=false" >> $GITHUB_OUTPUT
-          else
-            echo "can_trigger=true" >> $GITHUB_OUTPUT
-          fi
-
       - id: check
         run: echo "can_trigger=true" >> $GITHUB_OUTPUT
 

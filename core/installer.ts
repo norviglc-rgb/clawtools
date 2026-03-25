@@ -85,43 +85,105 @@ export async function installNode(platform: string): Promise<NodeInstallResult> 
   });
 }
 
-export function getOpenClawInstallCommand(options: InstallOptions): string {
-  const channel = options.channel === 'stable' ? '@latest' : `@${options.channel}`;
+const NPM_MIRRORS = [
+  'https://registry.npmmirror.com',
+  'https://mirrors.tuna.tsinghua.edu.cn/npm',
+  'https://registry.npmmirror.org',
+];
 
-  switch (options.method) {
-    case 'npm':
-      return `npm install -g openclaw${channel}`;
-    case 'script':
-      return process.platform === 'win32'
-        ? 'iwr -useb https://openclaw.ai/install.ps1 | iex'
-        : 'curl -fsSL https://openclaw.ai/install.sh | bash';
-    case 'docker':
-      return 'docker pull openclaw/openclaw';
-    default:
-      return `npm install -g openclaw${channel}`;
+async function testMirror(mirror: string): Promise<boolean> {
+  try {
+    execSync(`npm view openclaw --registry=${mirror}`, { stdio: 'pipe', timeout: 10000 });
+    return true;
+  } catch {
+    return false;
   }
 }
 
 export async function installOpenClaw(options: InstallOptions): Promise<InstallResult> {
   const { method, channel, version } = options;
+  const versionSpec = version || (channel === 'stable' ? 'latest' : channel);
+  const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
+
+  // Docker method - no mirror needed
+  if (method === 'docker') {
+    try {
+      execSync('docker pull openclaw/openclaw:latest', { stdio: 'inherit', shell });
+      return { success: true, message: 'OpenClaw installed via Docker' };
+    } catch (error: any) {
+      return { success: false, message: `Docker install failed: ${error.message}` };
+    }
+  }
+
+  // Script method - try official first, no mirror fallback
+  if (method === 'script') {
+    const scriptUrl = process.platform === 'win32'
+      ? 'https://openclaw.ai/install.ps1'
+      : 'https://openclaw.ai/install.sh';
+    try {
+      const cmd = process.platform === 'win32'
+        ? `iwr -useb ${scriptUrl} | iex`
+        : `curl -fsSL ${scriptUrl} | bash`;
+      execSync(cmd, { stdio: 'inherit', shell });
+      return { success: true, message: 'OpenClaw installed via script' };
+    } catch (error: any) {
+      return { success: false, message: `Script install failed: ${error.message}` };
+    }
+  }
+
+  // NPM method - intelligent mirror fallback
+  console.log('[ClawTools] Detecting best npm mirror...');
+
+  // First, find a working mirror
+  let workingMirror = NPM_MIRRORS[0];
+  for (const mirror of NPM_MIRRORS) {
+    process.stdout.write(`  Testing ${mirror}... `);
+    if (await testMirror(mirror)) {
+      console.log('OK');
+      workingMirror = mirror;
+      break;
+    } else {
+      console.log('FAILED');
+    }
+  }
+
+  // If first mirror fails, try all others
+  if (!(await testMirror(workingMirror))) {
+    for (const mirror of NPM_MIRRORS) {
+      if (mirror === workingMirror) continue;
+      process.stdout.write(`  Retrying with ${mirror}... `);
+      if (await testMirror(mirror)) {
+        console.log('OK');
+        workingMirror = mirror;
+        break;
+      } else {
+        console.log('FAILED');
+      }
+    }
+  }
+
+  // Install with working mirror
+  const installCmd = `npm install -g openclaw@${versionSpec} --registry=${workingMirror}`;
+  console.log(`[ClawTools] Installing from ${workingMirror}...`);
 
   try {
-    let command: string;
-
-    if (method === 'docker') {
-      command = 'docker pull openclaw/openclaw:latest';
-    } else if (method === 'script') {
-      const platform = process.platform;
-      command = platform === 'win32'
-        ? 'iwr -useb https://openclaw.ai/install.ps1 | iex'
-        : 'curl -fsSL https://openclaw.ai/install.sh | bash';
-    } else {
-      const versionSpec = version || (channel === 'stable' ? 'latest' : channel);
-      command = `npm install -g openclaw@${versionSpec}`;
+    execSync(installCmd, { stdio: 'inherit', shell });
+  } catch (error: any) {
+    // If mirror install fails, try official registry as last resort
+    console.log('[ClawTools] Mirror failed, trying official registry...');
+    try {
+      execSync(`npm install -g openclaw@${versionSpec}`, { stdio: 'inherit', shell });
+      workingMirror = 'https://registry.npmjs.org';
+    } catch (finalError: any) {
+      return {
+        success: false,
+        message: `All npm mirrors failed. Last error: ${finalError.message}`,
+      };
     }
+  }
 
-    execSync(command, { stdio: 'inherit', shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash' });
-
+  // Verify installation
+  try {
     const installedVersion = execSync('openclaw --version', { encoding: 'utf8' }).trim();
     const installPath = execSync(
       process.platform === 'win32' ? 'where openclaw' : 'which openclaw',
@@ -130,21 +192,21 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
 
     return {
       success: true,
-      message: `OpenClaw ${installedVersion} installed successfully`,
+      message: `OpenClaw ${installedVersion} installed successfully via ${workingMirror}`,
       version: installedVersion,
       path: installPath,
     };
   } catch (error: any) {
     return {
       success: false,
-      message: `Installation failed: ${error.message}`,
+      message: `Install succeeded but verification failed: ${error.message}`,
     };
   }
 }
 
 export async function uninstallOpenClaw(): Promise<InstallResult> {
   try {
-    execSync('npm uninstall -g openclaw', { stdio: 'inherit' });
+    execSync('npm uninstall -g openclaw --registry=https://registry.npmmirror.com', { stdio: 'inherit' });
 
     const platform = process.platform;
     const configPaths = platform === 'win32'
@@ -168,7 +230,7 @@ export async function uninstallOpenClaw(): Promise<InstallResult> {
 
 export function getAvailableVersions(): string[] {
   try {
-    const output = execSync('npm view openclaw versions --json', { encoding: 'utf8' });
+    const output = execSync('npm view openclaw versions --json --registry=https://registry.npmmirror.com', { encoding: 'utf8' });
     const versions = JSON.parse(output);
     return versions.slice(-20);
   } catch {

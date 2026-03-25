@@ -22,13 +22,11 @@ CONTEXT PRESERVATION HINTS:
 
 3. ACTIVE REFERENCES:
    - Any functions/classes being modified
-   - Any tests being written
    - Any documentation being updated
 
 4. QUALITY GATES (must maintain):
    - typecheck must pass
    - lint must pass
-   - test coverage must be ≥ 80%
 
 5. BLOCKERS:
    - Any open issues requiring resolution

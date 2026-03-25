@@ -169,34 +169,39 @@ export function checkFirewall(): Promise<{ enabled: boolean; ports: number[] }> 
   });
 }
 
-export function checkPublicIP(): Promise<string | null> {
-  return new Promise((resolve) => {
-    const fetch = require('node-fetch');
-    fetch('https://api.ipify.org?format=json', { timeout: 5000 })
-      .then((res: any) => res.json())
-      .then((data: { ip: string }) => resolve(data.ip))
-      .catch(() => resolve(null));
-  });
+export async function checkPublicIP(): Promise<string | null> {
+  try {
+    // Use built-in fetch with AbortController for timeout (Node.js 18+)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+    clearTimeout(timeoutId);
+    const data = await res.json() as { ip: string };
+    return data.ip;
+  } catch {
+    return null;
+  }
 }
 
 export async function detectPorts(port: number = 18789): Promise<boolean> {
   return new Promise((resolve) => {
-    const net = require('net');
-    const client = new net.Socket();
+    import('net').then(({ default: net }) => {
+      const client = new net.Socket();
 
-    client.connect(port, '127.0.0.1', () => {
-      client.destroy();
-      resolve(true);
-    });
+      client.connect(port, '127.0.0.1', () => {
+        client.destroy();
+        resolve(true);
+      });
 
-    client.on('error', () => {
-      client.destroy();
-      resolve(false);
-    });
+      client.on('error', () => {
+        client.destroy();
+        resolve(false);
+      });
 
-    client.setTimeout(1000, () => {
-      client.destroy();
-      resolve(false);
-    });
+      client.setTimeout(1000, () => {
+        client.destroy();
+        resolve(false);
+      });
+    }).catch(() => resolve(false));
   });
 }

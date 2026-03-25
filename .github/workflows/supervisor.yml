@@ -25,7 +25,7 @@ jobs:
   supervisor:
     name: Run Supervisor
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ env.SUPERVISOR_TIMEOUT || 120 }}
+    timeout-minutes: 120
     concurrency:
       group: supervisor-run
       cancel-in-progress: false

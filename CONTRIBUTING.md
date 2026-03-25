@@ -102,13 +102,6 @@ clawtools/
 - 为公共 API 添加 JSDoc 注释
 - 保持函数小而专注
 
-### 测试
-
-运行测试套件：
-```bash
-npm run test
-```
-
 ### 提交消息格式
 
 ```
@@ -121,7 +114,6 @@ npm run test
 - Refactor: 代码重构
 - Docs: 文档更改
 - Style: 格式调整，无代码变更
-- Test: 添加测试
 - Chore: 维护任务
 ```
 

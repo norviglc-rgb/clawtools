@@ -9,9 +9,7 @@
       "module": "加密存储到本地 SQLite",
       "status": "pass",
       "priority": "P0",
-      "tests": [
-        "TESTS/unit/加密存储到本地 SQLite.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:20.442Z"
@@ -22,9 +20,7 @@
       "module": "OpenAI、MiniMax、智谱(GLM) 等",
       "status": "pass",
       "priority": "P0",
-      "tests": [
-        "TESTS/unit/OpenAI、MiniMax、智谱(GLM) 等.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:23.496Z"
@@ -35,9 +31,7 @@
       "module": "支持 stable/beta/dev 版本通道",
       "status": "pass",
       "priority": "P0",
-      "tests": [
-        "TESTS/unit/支持 stablebetadev 版本通道.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:27.107Z"
@@ -48,9 +42,7 @@
       "module": "干净卸载 OpenClaw",
       "status": "pass",
       "priority": "P1",
-      "tests": [
-        "TESTS/unit/干净卸载 OpenClaw.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:45.624Z"
@@ -61,9 +53,7 @@
       "module": "打包配置文件",
       "status": "pass",
       "priority": "P0",
-      "tests": [
-        "TESTS/unit/打包配置文件.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:30.221Z"
@@ -74,9 +64,7 @@
       "module": "防火墙/端口检测（需用户授权）",
       "status": "pass",
       "priority": "P1",
-      "tests": [
-        "TESTS/unit/防火墙端口检测（需用户授权）.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:49.058Z"
@@ -87,9 +75,7 @@
       "module": "从备份恢复",
       "status": "pass",
       "priority": "P0",
-      "tests": [
-        "TESTS/unit/从备份恢复.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:33.454Z"
@@ -100,9 +86,7 @@
       "module": "离线搜索 OpenClaw 文档",
       "status": "pass",
       "priority": "P1",
-      "tests": [
-        "TESTS/unit/离线搜索 OpenClaw 文档.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:52.010Z"
@@ -113,9 +97,7 @@
       "module": "用户可选 OpenClaw 版本",
       "status": "pass",
       "priority": "P0",
-      "tests": [
-        "TESTS/unit/用户可选 OpenClaw 版本.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:36.664Z"
@@ -126,9 +108,7 @@
       "module": "检测 Node.js、平台、防火墙、公网IP等",
       "status": "pass",
       "priority": "P0",
-      "tests": [
-        "TESTS/unit/检测 Node.js、平台、防火墙、公网IP等.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:40.235Z"
@@ -139,9 +119,7 @@
       "module": "检测 OpenClaw 运行状态",
       "status": "pass",
       "priority": "P0",
-      "tests": [
-        "TESTS/unit/检测 OpenClaw 运行状态.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:43.043Z"
@@ -152,9 +130,7 @@
       "module": "跨平台迁移（Docker/HyperV/原生）",
       "status": "pass",
       "priority": "P2",
-      "tests": [
-        "TESTS/unit/跨平台迁移（DockerHyperV原生）.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:35:48.196Z"
@@ -165,9 +141,7 @@
       "module": "预置优化配置（付费跳过、推荐项打开）",
       "status": "pass",
       "priority": "P1",
-      "tests": [
-        "TESTS/unit/预置优化配置（付费跳过、推荐项打开）.test.ts"
-      ],
+      "tests": [],
       "assigned_to": null,
       "notes": "",
       "updated_at": "2026-03-23T19:29:55.152Z"

@@ -2,7 +2,12 @@ import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+
+// ESM compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Adaptive native module repair mechanism
 let nativeModuleRepaired = false;

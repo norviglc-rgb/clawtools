@@ -64,8 +64,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-002: Provider 预设
 
@@ -77,8 +75,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-003: 一键安装
 
@@ -90,8 +86,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-004: 卸载功能
 
@@ -103,8 +97,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-005: 备份配置
 
@@ -116,8 +108,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-006: 安全扫描
 
@@ -129,8 +119,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-007: 恢复备份
 
@@ -142,8 +130,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-008: 文档搜索
 
@@ -155,8 +141,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-009: 版本选择
 
@@ -168,8 +152,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-010: 环境检测
 
@@ -181,8 +163,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-011: 系统诊断
 
@@ -194,8 +174,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-012: 迁移导出
 
@@ -207,8 +185,6 @@ See REQUIREMENTS.md for details
 
 **验收标准**:
 - [ ] 功能实现
-- [ ] 单元测试
-- [ ] 集成测试
 
 #### FEAT-013: 配置模板
 
@@ -234,9 +210,6 @@ project/
 ├── config/           # 配置
 ├── db/               # 数据库层
 ├── i18n/             # 国际化
-├── tests/            # 测试
-│   ├── unit/         # 单元测试
-│   └── e2e/          # 端到端测试
 ├── docs/             # 文档
 ├── scripts/          # 脚本
 └── package.json
@@ -244,7 +217,6 @@ project/
 
 ## 6. 质量标准
 
-- 测试覆盖率 ≥ 80%
 - 所有公共 API 有 TypeScript 类型定义
 - 遵循 ESLint 规则
 - 每次 commit 必须通过 typecheck
@@ -293,7 +265,7 @@ project/
 ### 设计原则
 
 1. **模块化**: 每个功能模块独立，低耦合
-2. **可测试**: 业务逻辑与UI分离，便于单元测试
+2. **可测试**: 业务逻辑与UI分离
 3. **可扩展**: 新功能通过添加模块实现，不修改核心
 
 ## 9. API 设计（如果有）

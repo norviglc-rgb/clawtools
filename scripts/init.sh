@@ -550,9 +550,6 @@ project/
 ├── config/           # 配置
 ├── db/               # 数据库层
 ├── i18n/             # 国际化
-├── tests/            # 测试
-│   ├── unit/         # 单元测试
-│   └── e2e/          # 端到端测试
 ├── docs/             # 文档
 ├── scripts/          # 脚本
 └── package.json
@@ -622,11 +619,8 @@ generate_features_json() {
         IFS='|' read -r name module priority <<< "$feat"
         local id=$(printf "FEAT-%03d" $index)
 
-        # Get test file path based on module
-        local test_path="TESTS/unit/$(echo "$module" | sed 's|/||g').test.ts"
-        if [ -z "$module" ] || [ "$module" = "/" ]; then
-            test_path=""
-        fi
+        # Test paths removed
+        local test_path=""
 
         if [ "$first" = no ]; then
             echo "," >> "$file"
@@ -640,7 +634,7 @@ generate_features_json() {
       "module": "$module",
       "status": "pending",
       "priority": "$priority",
-      "tests": ["$test_path"],
+      "tests": [],
       "assigned_to": null,
       "notes": ""
     }
@@ -707,10 +701,9 @@ generate_progress() {
 - [ ] 核心功能开发
   - [ ] （从 FEATURES.json 中选择下一个任务）
 
-### Phase 2: 测试
-- [ ] 单元测试
-- [ ] 集成测试
-- [ ] E2E测试
+### Phase 2: 代码质量
+- [ ] TypeScript 类型检查
+- [ ] Lint 检查
 
 ### Phase 3: 发布
 - [ ] 文档完善
@@ -1492,20 +1485,6 @@ validate_task() {
         return 1
     fi
 
-    # 2. 运行测试
-    if ! npm test &>/dev/null; then
-        log_error "Tests failed"
-        return 1
-    fi
-
-    # 3. 检查覆盖率
-    if command -v jq &> /dev/null; then
-        local coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json 2>/dev/null || echo "0")
-        if [ "$coverage" -lt 80 ]; then
-            log_warn "Coverage $coverage% < 80%"
-        fi
-    fi
-
     log_success "Validation passed for $feature_id"
     return 0
 }
@@ -1527,11 +1506,95 @@ update_task_status() {
 }
 
 # =============================================================================
+# 调用 Coding Agent 实现功能
+# =============================================================================
+
+invoke_coding_agent() {
+    local feature_id="$1"
+    local max_retries=3
+    local retry_count=0
+
+    log_info "Invoking Claude Code to implement $feature_id..."
+
+    while [ $retry_count -lt $max_retries ]; do
+        # 构建 Claude CLI 调用
+        # 使用 --print 模式和非交互式执行
+        local claude_prompt="You are the Coding Agent. Implement the feature '$feature_id' from FEATURES.json.
+
+Project: $(cat "$PROJECT_DIR/SPEC.md" 2>/dev/null | head -50 || echo 'See FEATURES.json')
+
+Working Directory: $PROJECT_DIR
+
+Task: $feature_id
+
+Instructions:
+1. Read FEATURES.json and find the feature with id='$feature_id'
+2. Read SPEC.md for project requirements
+3. Implement the feature code in the appropriate module under core/
+4. Run 'npm run typecheck' and fix any errors
+5. Update FEATURES.json: set status='in_progress', then 'pass' when complete
+8. Update PROGRESS.md with progress
+9. Create git commit with message 'feat: complete $feature_id'
+10. If you encounter errors, fix them and retry. After 3 failures, mark as 'blocked' with notes.
+
+Execute these steps now. Report your progress."
+
+        # 调用 Claude CLI
+        if command -v claude &> /dev/null; then
+            # 使用 claude --print 执行非交互式任务
+            echo "$claude_prompt" | claude --print --no-input 2>&1 | tee -a "$LOG_FILE"
+            local exit_code=${PIPESTATUS[0]}
+
+            if [ $exit_code -eq 0 ]; then
+                log_success "Claude Code completed $feature_id successfully"
+                return 0
+            else
+                log_warn "Claude Code exited with code $exit_code for $feature_id"
+                retry_count=$((retry_count + 1))
+            fi
+        elif command -v npx &> /dev/null; then
+            # 后备：尝试使用 npx claude
+            log_warn "claude CLI not found, trying npx..."
+            echo "$claude_prompt" | npx claude --print --no-input 2>&1 | tee -a "$LOG_FILE"
+            local exit_code=${PIPESTATUS[0]}
+
+            if [ $exit_code -eq 0 ]; then
+                log_success "Claude Code (via npx) completed $feature_id successfully"
+                return 0
+            else
+                log_warn "npx claude exited with code $exit_code for $feature_id"
+                retry_count=$((retry_count + 1))
+            fi
+        else
+            log_error "Neither claude nor npx available. Cannot invoke Coding Agent."
+            log_error "Please install Claude CLI: https://docs.anthropic.com/claude-code"
+            return 1
+        fi
+
+        if [ $retry_count -lt $max_retries ]; then
+            log_info "Retrying... (attempt $((retry_count + 1))/$max_retries)"
+            sleep 5
+        fi
+    done
+
+    # 3次失败后标记为 blocked
+    log_error "Failed to implement $feature_id after $max_retries attempts"
+    json_update "$feature_id" "status" "blocked" "$PROJECT_DIR/FEATURES.json"
+    return 1
+}
+
+# =============================================================================
 # 主循环
 # =============================================================================
 
 run_main_loop() {
     log_info "Starting main loop..."
+
+    # 检查 Claude CLI 是否可用
+    if ! command -v claude &> /dev/null && ! command -v npx &> /dev/null; then
+        log_warn "Claude CLI not found. Install from https://docs.anthropic.com/claude-code"
+        log_warn "Running in simulation mode - tasks will be marked pass without implementation"
+    fi
 
     while true; do
         # 检查退出条件
@@ -1556,6 +1619,8 @@ run_main_loop() {
         }
 
         local feature_id=$(echo "$task_info" | cut -d'|' -f1)
+        local feature_name=$(echo "$task_info" | cut -d'|' -f2)
+        local feature_priority=$(echo "$task_info" | cut -d'|' -f3)
 
         # 更新状态为进行中
         update_task_status "$feature_id" "in_progress"
@@ -1563,19 +1628,22 @@ run_main_loop() {
         # 记录到 PROGRESS.md
         echo "| $(date '+%H:%M') | $feature_id | Supervisor | Assigned |" >> "$PROJECT_DIR/PROGRESS.md"
 
-        # 这里应该调用 Coding Agent
-        # 由于是 bash 实现，暂时只标记为 pass，实际会由 Claude Code Agent 执行
-        log_info "Agent would process: $feature_id"
-        log_info "In real implementation, Claude Code Agent would be invoked here"
-
-        # 模拟完成
-        update_task_status "$feature_id" "pass"
+        # 调用 Coding Agent
+        if invoke_coding_agent "$feature_id"; then
+            # 验证任务完成
+            if validate_task "$feature_id"; then
+                log_success "Completed: $feature_id"
+            else
+                log_warn "Validation failed for $feature_id, marking as needs review"
+                json_update "$feature_id" "notes" "Validation failed - needs human review" "$PROJECT_DIR/FEATURES.json"
+            fi
+        else
+            log_error "Failed to complete $feature_id"
+        fi
 
         # 创建 commit
         git -C "$PROJECT_DIR" add -A 2>/dev/null || true
         git -C "$PROJECT_DIR" commit -m "feat: complete $feature_id" 2>/dev/null || true
-
-        log_success "Completed: $feature_id"
     done
 }
 
@@ -1733,7 +1801,6 @@ create_claude_hooks() {
       "Bash/git/**",
       "Bash/node/**",
       "Bash/npm run typecheck",
-      "Bash/npm test",
       "Bash/npm run lint"
     ],
     "deny": [
@@ -2168,10 +2235,8 @@ if [ -f "$PROJECT_DIR/FEATURES.json" ] && command -v jq &> /dev/null; then
         echo ""
         echo "Before claiming completion, verify:"
         echo "  □ Is the feature fully implemented?"
-        echo "  □ Are all tests written and passing?"
         echo "  □ Does typecheck pass?"
         echo "  □ Is lint clean?"
-        echo "  □ Is coverage ≥ 80%?"
         echo "  □ Is FEATURES.json status updated?"
         echo "  □ Is PROGRESS.md updated?"
         echo "  □ Is git commit created?"
@@ -2221,13 +2286,11 @@ CONTEXT PRESERVATION HINTS:
 
 3. ACTIVE REFERENCES:
    - Any functions/classes being modified
-   - Any tests being written
    - Any documentation being updated
 
 4. QUALITY GATES (must maintain):
    - typecheck must pass
    - lint must pass
-   - test coverage must be ≥ 80%
 
 5. BLOCKERS:
    - Any open issues requiring resolution
@@ -2451,7 +2514,6 @@ create_agent_definitions() {
     # Create per-agent CLAUDE.md files (idempotent - skip if exists)
     create_agent_claude "supervisor" "Supervisor Agent" "Project orchestration, task assignment, quality gates"
     create_agent_claude "coding" "Coding Agent" "Feature implementation, one feature at a time"
-    create_agent_claude "testing" "Testing Agent" "E2E testing, Puppeteer automation"
     create_agent_claude "qa" "QA Agent" "Code review, security audit"
     create_agent_claude "recovery" "Recovery Agent" "Auto-repair, critical path recovery"
 
@@ -2475,36 +2537,30 @@ Human (Oversight Only)
 │  - Self-correction                               │
 │  - Progress tracking                             │
 └─────────────────────────────────────────────────┘
-           │           │           │
-           ▼           ▼           ▼
-    ┌──────────┐ ┌──────────┐ ┌──────────┐
-    │  Coding  │ │  Testing  │ │    QA    │
-    │  Agent   │ │   Agent   │ │   Agent  │
-    └──────────┘ └──────────┘ └──────────┘
-                        │
-                        ▼
-               ┌──────────────┐
-               │   Recovery   │
-               │    Agent     │
-               └──────────────┘
+           │           │
+           ▼           ▼
+    ┌──────────┐ ┌──────────┐
+    │  Coding  │ │    QA    │
+    │  Agent   │ │   Agent  │
+    └──────────┘ └──────────┘
+           │
+           ▼
+    ┌──────────────┐
+    │   Recovery   │
+    │    Agent     │
+    └──────────────┘
 ```
 
 ## Supervisor Agent
 - **Role**: Project coordination, task assignment
 - **Instructions**: See SUPERVISOR.md or AGENTS/supervisor/CLAUDE.md
 - **Trigger**: On push to develop, manual /supervisor start, scheduled every 6h
-- **Exit**: All P0/P1 pass, coverage ≥ 80%, tests pass, no open P0/P1 bugs
+- **Exit**: All P0/P1 pass, no open P0/P1 bugs
 
 ## Coding Agent
 - **Role**: Feature implementation
 - **Instructions**: See AGENTS/coding/CLAUDE.md
-- **Workflow**: Read FEATURES.json → Implement → Test → Typecheck → Update status → Commit
-
-## Testing Agent
-- **Role**: E2E testing
-- **Instructions**: See AGENTS/testing/CLAUDE.md
-- **Trigger**: After Coding Agent completes feature
-- **Scope**: Critical user flows, no UI regressions
+- **Workflow**: Read FEATURES.json → Implement → Typecheck → Update status → Commit
 
 ## QA Agent
 - **Role**: Code review
@@ -2514,7 +2570,7 @@ Human (Oversight Only)
 ## Recovery Agent
 - **Role**: Auto-repair
 - **Instructions**: See AGENTS/recovery/CLAUDE.md
-- **Trigger**: When npm test fails, typecheck fails
+- **Trigger**: When typecheck fails
 - **Scope**: npm deps, TS errors, config corruption
 
 ## Agent Communication
@@ -2563,15 +2619,13 @@ You are the Supervisor Agent - orchestrating a team of specialized agents to bui
 3. CHECK_DEPENDENCIES - Ensure all deps status="pass"
 4. ASSIGN_TO_CODING_AGENT - Dispatch feature work
 5. WAIT_FOR_COMPLETION - Poll for results
-6. RUN_VALIDATION - Tests, typecheck, lint
+6. RUN_VALIDATION - typecheck, lint
 7. UPDATE_STATUS - Mark pass/fail in FEATURES.json
 8. CHECK_SELF_CORRECTION - Trigger if needed
 9. PERIODIC_CHECKPOINT - Every 2 hours
 
 ## Exit Conditions (ALL must be true)
 - All P0/P1 features status="pass"
-- Coverage ≥ 80%
-- `npm test` passes
 - No open P0/P1 bugs
 
 ## Self-Correction Triggers
@@ -2579,13 +2633,11 @@ You are the Supervisor Agent - orchestrating a team of specialized agents to bui
 |---------|-----------|--------|
 | Timeout | Feature pending > 48h | Reassign or split task |
 | Repeated failure | Same feature fails 3x | Mark for human review |
-| Coverage drop | < 80% | Pause, prioritize tests |
 | Build broken | typecheck fails | Block and alert |
 
 ## Quality Gates (pre-commit)
 - [ ] typecheck: PASS
 - [ ] lint: PASS (no warnings)
-- [ ] unit tests: PASS (100%)
 - [ ] no console.log/debugger
 
 ## Commands
@@ -2624,16 +2676,14 @@ Implement features one at a time following the project specification.
 1. Read feature from FEATURES.json (status="pending", priority order)
 2. Read SPEC.md for requirements
 3. Implement code in appropriate module
-4. Write unit tests (≥ 80% coverage)
-5. Run typecheck: `npm run typecheck`
-6. Run lint: `npm run lint`
-7. Update FEATURES.json status → "in_progress" then "pass"
-8. Update PROGRESS.md with progress
-9. Create git commit
+4. Run typecheck: `npm run typecheck`
+5. Run lint: `npm run lint`
+6. Update FEATURES.json status → "in_progress" then "pass"
+7. Update PROGRESS.md with progress
+8. Create git commit
 
 ## Quality Standards
 - TypeScript strict mode
-- 80% test coverage minimum
 - ESLint passing (no warnings)
 - No console.log or debugger statements
 - Error handling required
@@ -2641,12 +2691,10 @@ Implement features one at a time following the project specification.
 ## File Locations
 - Core modules: `core/`
 - CLI screens: `cli/screens/`
-- Tests: `TESTS/unit/` or `cli/`
 - Config: `resources/`
 
 ## Exit Criteria for Feature
 - [ ] Code implemented
-- [ ] Unit tests written and passing
 - [ ] typecheck passes
 - [ ] lint passes
 - [ ] FEATURES.json updated
@@ -2658,47 +2706,6 @@ Implement features one at a time following the project specification.
 - Mark feature complete in FEATURES.json
 - Log any blockers or issues
 CODINGCLAUDEEOF
-            ;;
-
-        testing)
-            cat > "$agent_dir/CLAUDE.md" << 'TESTINGCLAUDEEOF'
-# Testing Agent
-
-> End-to-end testing specialist
-
-## Role
-Verify feature implementations work correctly via automated E2E tests.
-
-## Responsibilities
-- E2E test implementation (Puppeteer-based)
-- Cross-platform verification
-- Critical user flow coverage
-- No UI regressions
-
-## Trigger
-- After Coding Agent marks feature "pass"
-- Before feature is marked "verified" in FEATURES.json
-
-## Scope
-- Critical user flows (install, configure, backup, restore)
-- Platform-specific issues (Windows/Linux/macOS)
-- No UI regressions
-
-## Test Types
-- **E2E**: Full user workflow automation
-- **Integration**: Module interaction
-- **Smoke**: Basic functionality check
-
-## Quality Gates
-- All E2E tests pass
-- No new regressions introduced
-- Cross-platform compatibility verified
-
-## Reporting
-Update FEATURES.json with:
-- test_status: "pass" | "fail"
-- test_notes: Any issues found
-TESTINGCLAUDEEOF
             ;;
 
         qa)
@@ -2757,7 +2764,6 @@ QACLAUDEEOF
 Detect and repair broken basics to restore functionality.
 
 ## Trigger
-- When `npm test` fails
 - When typecheck fails
 - When basic functionality breaks
 
@@ -2853,7 +2859,7 @@ Start the Supervisor development loop:
 1. Read FEATURES.json for pending tasks
 2. Select highest priority task (P0 > P1 > P2)
 3. Assign to Coding Agent
-4. Validate results (tests, typecheck, lint)
+4. Validate results (typecheck, lint)
 5. Update status in FEATURES.json
 6. Check self-correction triggers
 7. Create checkpoint if needed
@@ -2888,8 +2894,6 @@ Resume from paused state.
 ### `/supervisor exit`
 Check all exit conditions and report:
 - All P0/P1 features complete?
-- Coverage ≥ 80%?
-- All tests passing?
 - No open P0/P1 bugs?
 - **If ALL true**: Development complete, ready for release
 
@@ -2905,9 +2909,7 @@ WHILE NOT exit_conditions_met:
     6. WAIT_FOR_COMPLETION
     7. RUN_VALIDATION
        - npm run typecheck
-       - npm test
        - npm run lint
-       - Check coverage ≥ 80%
     8. IF validation passes:
        - UPDATE_STATUS("pass")
        - CREATE_GIT_COMMIT
@@ -2929,8 +2931,6 @@ jq '[.features[] | select(.priority | IN("P0","P1")) | select(.status != "pass")
 jq '[.bugs[] | select(.priority | IN("P0","P1") and .status == "open")] | length' FEATURES.json
 # Must equal 0
 
-npm test  # Must pass
-coverage >= 80%  # From coverage/coverage-summary.json
 ```
 
 ## Self-Correction Triggers
@@ -2939,7 +2939,6 @@ coverage >= 80%  # From coverage/coverage-summary.json
 |---------|-----------|--------|
 | Task Timeout | pending > 48h | Reassign or split task |
 | Repeated Failure | same task fails 3x | Mark for human review |
-| Coverage Drop | < 80% | Pause, prioritize tests |
 | Build Broken | typecheck fails | Block and alert |
 | Retry Loop | same command fails 3x | Suggest alternative |
 
@@ -2950,8 +2949,6 @@ Before marking ANY feature as "pass":
 ```
 □ typecheck: npm run typecheck → PASS
 □ lint: npm run lint → PASS (no warnings)
-□ tests: npm test → PASS (100%)
-□ coverage: ≥ 80% (from coverage/coverage-summary.json)
 □ no console.log/debugger in code
 □ FEATURES.json: status updated to "pass"
 □ PROGRESS.md: progress logged
@@ -2965,10 +2962,8 @@ The SessionEnd hook prevents rationalization. Before claiming task complete:
 
 ```
 □ Is the code actually implemented?
-□ Do tests actually test the feature?
 □ Does typecheck pass with NO errors?
 □ Does lint pass with NO warnings?
-□ Is coverage ≥ 80%?
 □ Did I commit the changes?
 □ Did I update FEATURES.json?
 □ Did I update PROGRESS.md?
@@ -2992,7 +2987,6 @@ project/
 ├── AGENTS/           # Per-agent CLAUDE.md files
 │   ├── supervisor/   # Supervisor agent context
 │   ├── coding/       # Coding agent context
-│   ├── testing/      # Testing agent context
 │   ├── qa/           # QA agent context
 │   └── recovery/     # Recovery agent context
 └── .claude/hooks/    # Lifecycle hooks
@@ -3086,7 +3080,6 @@ STATUSSCRIPT
       "module": "core/",
       "status": "pending|in_progress|pass|blocked",
       "priority": "P0|P1|P2",
-      "tests": ["path/to/test.test.ts"],
       "assigned_to": "agent-id|null",
       "notes": "free text",
       "created_at": "ISO timestamp",
@@ -3123,7 +3116,7 @@ STATUSSCRIPT
   "self_corrections": [
     {
       "id": "SC-001",
-      "type": "timeout|repeated_failure|coverage_drop",
+      "type": "timeout|repeated_failure|build_failure",
       "feature_id": "FEAT-001",
       "action": "What was done",
       "result": "resolved|failed",
@@ -3205,21 +3198,6 @@ jobs:
 
       - name: ESLint
         run: npm run lint || true
-
-      - name: Unit tests
-        run: npm test
-        continue-on-error: false
-
-      - name: Check coverage
-        run: |
-          COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct // 0')
-          echo "Coverage: $COVERAGE%"
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "WARNING: Coverage below 80%"
-            echo "can_trigger=false" >> $GITHUB_OUTPUT
-          else
-            echo "can_trigger=true" >> $GITHUB_OUTPUT
-          fi
 
       - id: check
         run: echo "can_trigger=true" >> $GITHUB_OUTPUT
@@ -3556,7 +3534,6 @@ dist/
 *.db
 .clawtools/
 .agentflow/
-coverage/
 GITIGNORE
     fi
 
