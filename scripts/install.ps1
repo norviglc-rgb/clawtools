@@ -92,11 +92,9 @@ function Install-ClawTools {
 
     # Fix security vulnerabilities
     Write-Host "Checking for security vulnerabilities..." -ForegroundColor Cyan
-    $auditOutput = npm audit fix --force 2>&1 | Out-String
-    if ($auditOutput -match "found 0 vulnerabilities") {
+    npm audit fix --force 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
         Write-Host "No vulnerabilities found." -ForegroundColor Green
-    } elseif ($auditOutput -match "fixed \d+ vulnerability") {
-        Write-Host "Security vulnerabilities fixed." -ForegroundColor Green
     }
 
     npm run build
