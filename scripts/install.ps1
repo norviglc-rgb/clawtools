@@ -133,10 +133,10 @@ function Install-ClawTools {
 
     Write-Host ""
     Write-Host "+===============================================+" -ForegroundColor Green
-    Write-Host "|          安装完成！                           |" -ForegroundColor Green
+    Write-Host "|          Installation Complete!               |" -ForegroundColor Green
     Write-Host "+===============================================+" -ForegroundColor Green
     Write-Host ""
-    Write-Host "运行 'clawtools' 启动。" -ForegroundColor White
+    Write-Host "Run 'clawtools' to start." -ForegroundColor White
     Write-Host ""
 }
 
