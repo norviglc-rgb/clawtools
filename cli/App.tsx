@@ -31,6 +31,9 @@ const menuItems: Record<MenuItem, MenuItemConfig> = {
 export function App({ systemInfo }: { systemInfo: SystemInfo }) {
   const [selectedMenu, setSelectedMenu] = useState<MenuItem>('install');
   const [showScreen, setShowScreen] = useState(false);
+  const [cursorIndex, setCursorIndex] = useState(0);
+
+  const menuKeys = Object.keys(menuItems) as MenuItem[];
 
   useEffect(() => {
     const handleKeypress = (data: Buffer) => {
@@ -42,13 +45,31 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
       }
 
       if (!showScreen) {
-        const item = Object.entries(menuItems).find(([, config]) => config.shortcut === key);
-        if (item) {
-          if (item[0] === 'exit') {
+        // Arrow key navigation
+        if (key === '\u001b[A') { // Arrow up
+          setCursorIndex((i) => Math.max(0, i - 1));
+          setSelectedMenu(menuKeys[Math.max(0, cursorIndex - 1)]);
+        } else if (key === '\u001b[B') { // Arrow down
+          setCursorIndex((i) => Math.min(menuKeys.length - 1, i + 1));
+          setSelectedMenu(menuKeys[Math.min(menuKeys.length - 1, cursorIndex + 1)]);
+        } else if (key === '\r' || key === '\n') { // Enter
+          const selected = menuKeys[cursorIndex];
+          if (selected === 'exit') {
             process.exit(0);
           }
-          setSelectedMenu(item[0] as MenuItem);
+          setSelectedMenu(selected);
           setShowScreen(true);
+        } else {
+          // Number key shortcuts
+          const item = Object.entries(menuItems).find(([, config]) => config.shortcut === key);
+          if (item) {
+            if (item[0] === 'exit') {
+              process.exit(0);
+            }
+            setSelectedMenu(item[0] as MenuItem);
+            setCursorIndex(menuKeys.indexOf(item[0] as MenuItem));
+            setShowScreen(true);
+          }
         }
       }
     };
@@ -60,7 +81,7 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
       process.stdin.setRawMode(false);
       process.stdin.removeAllListeners('data');
     };
-  }, [showScreen]);
+  }, [showScreen, cursorIndex, menuKeys]);
 
   const renderMenu = () => (
     <Box flexDirection="column" padding={1}>
@@ -93,19 +114,25 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
         <Text bold>请选择操作:</Text>
       </Box>
 
-      {(Object.keys(menuItems) as MenuItem[]).map((key) => {
+      {menuKeys.map((key, index) => {
         const item = menuItems[key];
         const isSelected = selectedMenu === key;
+        const isCursor = cursorIndex === index;
 
         return (
           <Box key={key} flexDirection="row" marginBottom={1}>
             <Box width={3}>
-              <Text bold={isSelected} inverse={isSelected}>
+              <Text color={isCursor ? 'cyan' : undefined}>
+                {isCursor ? '>' : ' '}
+              </Text>
+            </Box>
+            <Box width={3}>
+              <Text bold={isSelected} color={isCursor ? 'cyan' : undefined}>
                 {item.shortcut}
               </Text>
             </Box>
             <Box flexDirection="column" width={40}>
-              <Text bold={isSelected}>{item.label}</Text>
+              <Text bold={isSelected} color={isCursor ? 'cyan' : undefined}>{item.label}</Text>
               <Text dimColor>{item.description}</Text>
             </Box>
           </Box>
@@ -113,7 +140,7 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
       })}
 
       <Box marginTop={1}>
-        <Text dimColor>按 [q] 退出 • 按数字键选择</Text>
+        <Text dimColor>[↑/↓] 导航 • [回车] 选择 • [q] 退出</Text>
       </Box>
     </Box>
   );
