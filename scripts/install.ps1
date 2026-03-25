@@ -2,16 +2,15 @@
 # Usage:
 #   powershell -ExecutionPolicy Bypass -Command "[System.IO.File]::WriteAllText('$env:TEMP\clawtools_install.ps1', (Invoke-WebRequest 'https://raw.githubusercontent.com/norviglc-rgb/clawtools/master/scripts/install.ps1').Content, [System.Text.Encoding]::UTF8); & '$env:TEMP\clawtools_install.ps1'"
 
-param(
-    [string]$InstallDir = "$env:USERPROFILE\.clawtools",
-    [string]$RepoUrl = "https://github.com/norviglc-rgb/clawtools.git"
-)
-
 # Set console to UTF-8 mode
 chcp 65001 > $null 2>&1
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 $ErrorActionPreference = "Stop"
+
+# Detect if running via iex (pipeline) and handle parameters
+$InstallDir = if ($env:CLAWTOOLS_INSTALL_DIR) { $env:CLAWTOOLS_INSTALL_DIR } else { "$env:USERPROFILE\.clawtools" }
+$RepoUrl = if ($env:CLAWTOOLS_REPO_URL) { $env:CLAWTOOLS_REPO_URL } else { "https://github.com/norviglc-rgb/clawtools.git" }
 
 Write-Host ""
 Write-Host "+===============================================+" -ForegroundColor Cyan
