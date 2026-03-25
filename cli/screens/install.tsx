@@ -6,7 +6,12 @@ import { installOpenClaw, getVersionList, InstallPlatform, VersionInfo } from '.
 
 type InstallStep = 'platform' | 'versions' | 'docker-check' | 'wsl-check' | 'installing' | 'done';
 
-export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
+type InstallScreenProps = {
+  systemInfo: SystemInfo;
+  onExit: () => void;
+};
+
+export function InstallScreen({ systemInfo, onExit }: InstallScreenProps) {
   const [step, setStep] = useState<InstallStep>('platform');
   const [selectedVersion, setSelectedVersion] = useState<VersionInfo | null>(null);
   const [versionList, setVersionList] = useState<VersionInfo[]>([]);
@@ -134,8 +139,8 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
         }
       }
     } else if (step === 'done' && (key === '\r' || key === '\n' || key === '\x1b')) {
-      // Exit screen, return to main menu
-      process.exit(0);
+      // Return to main menu
+      onExit();
     }
   }, [step, versionList, versionPage, loadVersions, handlePlatformSelect, dockerInfo, wslInfo, cursorIndex]);
 

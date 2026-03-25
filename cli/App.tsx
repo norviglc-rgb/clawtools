@@ -148,7 +148,7 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
   const renderScreen = () => {
     switch (selectedMenu) {
       case 'install':
-        return <InstallScreen systemInfo={systemInfo} />;
+        return <InstallScreen systemInfo={systemInfo} onExit={() => setShowScreen(false)} />;
       case 'config':
         return <ConfigScreen />;
       case 'doctor':
