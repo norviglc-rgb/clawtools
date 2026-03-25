@@ -18,14 +18,14 @@ interface MenuItemConfig {
 }
 
 const menuItems: Record<MenuItem, MenuItemConfig> = {
-  install: { label: 'Install', description: 'Install or update OpenClaw', shortcut: '1' },
-  config: { label: 'Config', description: 'Configure providers and settings', shortcut: '2' },
-  doctor: { label: 'Doctor', description: 'Run diagnostics', shortcut: '3' },
-  backup: { label: 'Backup', description: 'Backup and restore', shortcut: '4' },
-  search: { label: 'Search', description: 'Search documentation', shortcut: '5' },
-  scanner: { label: 'Scanner', description: 'Security scan (firewall/ports)', shortcut: '6' },
-  migrate: { label: 'Migrate', description: 'Cross-platform migration export', shortcut: '7' },
-  exit: { label: 'Exit', description: 'Exit ClawTools', shortcut: 'q' },
+  install: { label: '安装', description: '安装或更新 OpenClaw', shortcut: '1' },
+  config: { label: '配置', description: '配置提供商和设置', shortcut: '2' },
+  doctor: { label: '诊断', description: '运行诊断检查', shortcut: '3' },
+  backup: { label: '备份', description: '备份和恢复数据', shortcut: '4' },
+  search: { label: '搜索', description: '搜索文档', shortcut: '5' },
+  scanner: { label: '扫描', description: '安全扫描 (防火墙/端口)', shortcut: '6' },
+  migrate: { label: '迁移', description: '跨平台迁移导出', shortcut: '7' },
+  exit: { label: '退出', description: '退出 ClawTools', shortcut: 'q' },
 };
 
 export function App({ systemInfo }: { systemInfo: SystemInfo }) {
@@ -65,14 +65,14 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
   const renderMenu = () => (
     <Box flexDirection="column" padding={1}>
       <Box flexDirection="column" marginBottom={1}>
-        <Text bold>Platform: </Text>
+        <Text bold>平台: </Text>
         <Text>{systemInfo.platform} ({systemInfo.arch})</Text>
       </Box>
 
       <Box flexDirection="column" marginBottom={1}>
         <Text bold>Node.js: </Text>
         <Text color={systemInfo.node.meetsRequirement ? 'green' : 'red'}>
-          {systemInfo.node.installed ? systemInfo.node.version : 'Not installed'}
+          {systemInfo.node.installed ? systemInfo.node.version : '未安装'}
         </Text>
       </Box>
 
@@ -81,7 +81,7 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
         <Text color={systemInfo.openclaw.installed ? 'green' : 'yellow'}>
           {systemInfo.openclaw.installed
             ? `v${systemInfo.openclaw.version || 'unknown'}`
-            : 'Not installed'}
+            : '未安装'}
         </Text>
       </Box>
 
@@ -90,7 +90,7 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
       </Box>
 
       <Box marginBottom={1}>
-        <Text bold>Select an option:</Text>
+        <Text bold>请选择操作:</Text>
       </Box>
 
       {(Object.keys(menuItems) as MenuItem[]).map((key) => {
@@ -113,7 +113,7 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
       })}
 
       <Box marginTop={1}>
-        <Text dimColor>Press [q] to exit • Press number to select</Text>
+        <Text dimColor>按 [q] 退出 • 按数字键选择</Text>
       </Box>
     </Box>
   );
@@ -143,7 +143,7 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
     return (
       <Box flexDirection="column">
         <Box padding={1} borderStyle="round" borderColor="blue">
-          <Text dimColor>Press [Esc] to go back</Text>
+          <Text dimColor>按 [Esc] 返回</Text>
         </Box>
         {renderScreen()}
       </Box>
