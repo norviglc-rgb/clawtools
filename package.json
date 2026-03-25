@@ -16,12 +16,12 @@
     "openclaw-manager"
   ],
   "bin": {
-    "clawtools": "./bin/index.js"
+    "clawtools": "./bin/cli/index.js"
   },
   "scripts": {
-    "build": "tsc",
-    "start": "node ./bin/index.js",
-    "dev": "tsc && node ./bin/index.js",
+    "build": "tsc && node scripts/fix-imports.js",
+    "start": "node ./bin/cli/index.js",
+    "dev": "npm run build && node ./bin/cli/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'No lint configured' && exit 0"
   },

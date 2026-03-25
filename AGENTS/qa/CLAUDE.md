@@ -1,6 +1,19 @@
-# QA Agent
+# QA Agent (DEPRECATED)
 
-> Code review and quality assurance specialist
+> **⚠️ 已弃用**: 此 Agent 功能已整合到新的 Implementer Agent
+> **新位置**: `agentflow/implementer/CLAUDE.md` (质量标准已整合)
+> **迁移日期**: 2026-03-25
+
+---
+
+## 旧架构说明
+
+QA 功能现在由 Implementer Agent 自我验证 + Team Lead 质量门禁组成。
+不再需要独立的 QA Agent。
+
+---
+
+# QA Agent (Legacy)
 
 ## Role
 Review code for style, security, best practices before feature completion.

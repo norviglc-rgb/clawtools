@@ -1,6 +1,20 @@
-# Coding Agent
+# Coding Agent (DEPRECATED)
 
-> Feature implementation specialist
+> **⚠️ 已弃用**: 此 Agent 已迁移到 Claude Code 原生 Agent Teams 架构
+> **新位置**: `agentflow/implementer/CLAUDE.md`
+> **迁移日期**: 2026-03-25
+
+---
+
+## 旧架构说明
+
+此文件仅用于参考。新的 Implementer Agent 请使用:
+- **文件**: `agentflow/implementer/CLAUDE.md`
+- **团队**: `clawtools-team`
+
+---
+
+# Coding Agent (Legacy)
 
 ## Role
 Implement features one at a time following the project specification.

@@ -28,10 +28,10 @@ OpenClaw 安装、配置与管理套件
 
 ```bash
 # Linux/macOS/WSL
-curl -fsSL https://raw.githubusercontent.com/norviglc-rgb/clawtools/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/norviglc-rgb/clawtools/master/scripts/install.sh | bash
 
 # Windows (PowerShell)
-iwr -useb https://raw.githubusercontent.com/norviglc-rgb/clawtools/main/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/norviglc-rgb/clawtools/master/scripts/install.ps1 | iex
 ```
 
 ### 使用

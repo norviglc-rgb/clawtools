@@ -1,9 +1,9 @@
 # ClawTools Installation Script for Windows
-# Usage: iwr -useb https://raw.githubusercontent.com/YOUR_USERNAME/clawtools/main/scripts/install.ps1 | iex
+# Usage: iwr -useb https://raw.githubusercontent.com/norviglc-rgb/clawtools/master/scripts/install.ps1 | iex
 
 param(
     [string]$InstallDir = "$env:USERPROFILE\.clawtools",
-    [string]$RepoUrl = "https://github.com/YOUR_USERNAME/clawtools.git"
+    [string]$RepoUrl = "https://github.com/norviglc-rgb/clawtools.git"
 )
 
 $ErrorActionPreference = "Stop"
@@ -77,7 +77,7 @@ function Install-ClawTools {
     Write-Host "Cloning/updating ClawTools..." -ForegroundColor Cyan
     if (Test-Path "$InstallDir\.git") {
         Set-Location $InstallDir
-        git pull origin main
+        git pull origin master
     } else {
         if (Test-Path $InstallDir) {
             Remove-Item -Recurse -Force $InstallDir
@@ -91,13 +91,14 @@ function Install-ClawTools {
     npm install
     npm run build
 
-    # Create symlink in PATH
+    # Create CLI wrapper
     Write-Host "Setting up CLI..." -ForegroundColor Cyan
-    $clawtoolsBin = "$InstallDir\bin\index.js"
-    $targetBin = "$env:LOCALAPPDATA\Microsoft\WindowsApps\clawtools.cmd"
+    $clawtoolsBin = "$InstallDir\bin\cli\index.js"
+    $clawtoolsCmd = "$InstallDir\clawtools.cmd"
 
-    $cmdContent = "@echo off`n`touch `"$clawtoolsBin`"`n`tnode `"$clawtoolsBin`" %*"
-    $cmdContent | Out-File -FilePath "$InstallDir\clawtools.cmd" -Encoding ASCII
+    # Create a batch file to launch clawtools
+    $cmdContent = "@echo off`r`nnode `"$clawtoolsBin`" %*"
+    $cmdContent | Out-File -FilePath $clawtoolsCmd -Encoding ASCII
 
     # Add to PATH
     $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")

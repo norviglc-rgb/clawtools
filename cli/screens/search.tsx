@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { DocSearch, SearchResult } from '../../core/search';
-import { getDatabase } from '../../db';
+import { getDatabase } from '../../db/index';
 
 type SearchStep = 'menu' | 'searching' | 'results' | 'done';
 

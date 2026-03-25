@@ -1,10 +1,10 @@
 #!/bin/bash
 # ClawTools Installation Script
-# Usage: curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/clawtools/main/scripts/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/norviglc-rgb/clawtools/master/scripts/install.sh | bash
 
 set -e
 
-CLAWTOOLS_REPO="${CLAWTOOLS_REPO:-https://github.com/YOUR_USERNAME/clawtools.git}"
+CLAWTOOLS_REPO="${CLAWTOOLS_REPO:-https://github.com/norviglc-rgb/clawtools.git}"
 INSTALL_DIR="${HOME}/.clawtools"
 BIN_DIR="${HOME}/.local/bin"
 
@@ -45,7 +45,7 @@ clone_repo() {
 
     if [ -d "$INSTALL_DIR/.git" ]; then
         cd "$INSTALL_DIR"
-        git pull origin main
+        git pull origin master
     else
         rm -rf "$INSTALL_DIR"
         git clone --depth 1 "$CLAWTOOLS_REPO" "$INSTALL_DIR"
@@ -64,7 +64,7 @@ install_dependencies() {
 create_symlinks() {
     echo "Creating symlinks..."
 
-    CLAWTOOLS_BIN="$INSTALL_DIR/bin/index.js"
+    CLAWTOOLS_BIN="$INSTALL_DIR/bin/cli/index.js"
 
     if [ -d "$BIN_DIR" ]; then
         ln -sf "$CLAWTOOLS_BIN" "$BIN_DIR/clawtools"

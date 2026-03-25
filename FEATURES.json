@@ -10,9 +10,9 @@
       "status": "pass",
       "priority": "P0",
       "tests": [],
-      "assigned_to": null,
-      "notes": "",
-      "updated_at": "2026-03-23T19:29:20.442Z"
+      "assigned_to": "implementer-a",
+      "notes": "实现: SecureKeyStorage 类, AES-256-CBC 加密, PBKDF2 密钥派生",
+      "updated_at": "2026-03-25T00:00:00.000Z"
     },
     {
       "id": "FEAT-002",
@@ -65,9 +65,9 @@
       "status": "pass",
       "priority": "P1",
       "tests": [],
-      "assigned_to": null,
-      "notes": "",
-      "updated_at": "2026-03-23T19:29:49.058Z"
+      "assigned_to": "implementer-b",
+      "notes": "实现: SecurityScanner类, 防火墙/端口检测, 用户授权机制, 严重程度分级",
+      "updated_at": "2026-03-25T00:00:00.000Z"
     },
     {
       "id": "FEAT-007",
@@ -98,9 +98,9 @@
       "status": "pass",
       "priority": "P0",
       "tests": [],
-      "assigned_to": null,
-      "notes": "",
-      "updated_at": "2026-03-23T19:29:36.664Z"
+      "assigned_to": "implementer-c",
+      "notes": "实现: VersionInfo接口, getVersionList(), 版本选择UI (stable/beta/dev标签)",
+      "updated_at": "2026-03-25T00:00:00.000Z"
     },
     {
       "id": "FEAT-010",
@@ -131,9 +131,9 @@
       "status": "pass",
       "priority": "P2",
       "tests": [],
-      "assigned_to": null,
-      "notes": "",
-      "updated_at": "2026-03-23T19:35:48.196Z"
+      "assigned_to": "implementer-c",
+      "notes": "实现: MigrationPlatform类型, exportForMigration/importMigration, Docker/Hyper-V/Native支持",
+      "updated_at": "2026-03-25T00:00:00.000Z"
     },
     {
       "id": "FEAT-013",
@@ -142,14 +142,15 @@
       "status": "pass",
       "priority": "P1",
       "tests": [],
-      "assigned_to": null,
-      "notes": "",
-      "updated_at": "2026-03-23T19:29:55.152Z"
+      "assigned_to": "implementer-a",
+      "notes": "实现: ConfigTemplateManager类, 3个内置模板(minimal/balanced/performance), 付费跳过/推荐项默认打开",
+      "updated_at": "2026-03-25T00:00:00.000Z"
     }
   ],
   "summary": {
     "total": 13,
     "pass": 13,
+    "partial": 0,
     "pending": 0,
     "blocked": 0
   },

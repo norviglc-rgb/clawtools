@@ -6,8 +6,10 @@ import { ConfigScreen } from './screens/config';
 import { DoctorScreen } from './screens/doctor';
 import { BackupScreen } from './screens/backup';
 import { SearchScreen } from './screens/search';
+import { ScannerScreen } from './screens/scanner';
+import { MigrationScreen } from './screens/migration';
 
-type MenuItem = 'install' | 'config' | 'doctor' | 'backup' | 'search' | 'exit';
+type MenuItem = 'install' | 'config' | 'doctor' | 'backup' | 'search' | 'scanner' | 'migrate' | 'exit';
 
 interface MenuItemConfig {
   label: string;
@@ -21,6 +23,8 @@ const menuItems: Record<MenuItem, MenuItemConfig> = {
   doctor: { label: 'Doctor', description: 'Run diagnostics', shortcut: '3' },
   backup: { label: 'Backup', description: 'Backup and restore', shortcut: '4' },
   search: { label: 'Search', description: 'Search documentation', shortcut: '5' },
+  scanner: { label: 'Scanner', description: 'Security scan (firewall/ports)', shortcut: '6' },
+  migrate: { label: 'Migrate', description: 'Cross-platform migration export', shortcut: '7' },
   exit: { label: 'Exit', description: 'Exit ClawTools', shortcut: 'q' },
 };
 
@@ -126,6 +130,10 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
         return <BackupScreen />;
       case 'search':
         return <SearchScreen />;
+      case 'scanner':
+        return <ScannerScreen />;
+      case 'migrate':
+        return <MigrationScreen />;
       default:
         return null;
     }

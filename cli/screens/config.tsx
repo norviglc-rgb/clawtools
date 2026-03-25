@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { Configurator, presetProviders } from '../../core/configurator';
-import { getDatabase, ProviderRecord } from '../../db';
+import { getDatabase, ProviderRecord } from '../../db/index';
 
 type ConfigStep = 'menu' | 'select-provider' | 'enter-apikey' | 'done';
 

@@ -38,19 +38,19 @@ See REQUIREMENTS.md for details
 
 | ID | 功能名称 | 模块 | 优先级 | 状态 |
 |----|----------|------|--------|------|
-| FEAT-001 | API Key 安全存储 | 加密存储到本地 SQLite | P0 | pending |
-| FEAT-002 | Provider 预设 | OpenAI、MiniMax、智谱(GLM) 等 | P0 | pending |
-| FEAT-003 | 一键安装 | 支持 stable/beta/dev 版本通道 | P0 | pending |
-| FEAT-004 | 卸载功能 | 干净卸载 OpenClaw | P1 | pending |
-| FEAT-005 | 备份配置 | 打包配置文件 | P0 | pending |
-| FEAT-006 | 安全扫描 | 防火墙/端口检测（需用户授权） | P1 | pending |
-| FEAT-007 | 恢复备份 | 从备份恢复 | P0 | pending |
-| FEAT-008 | 文档搜索 | 离线搜索 OpenClaw 文档 | P1 | pending |
-| FEAT-009 | 版本选择 | 用户可选 OpenClaw 版本 | P0 | pending |
-| FEAT-010 | 环境检测 | 检测 Node.js、平台、防火墙、公网IP等 | P0 | pending |
-| FEAT-011 | 系统诊断 | 检测 OpenClaw 运行状态 | P0 | pending |
+| FEAT-001 | API Key 安全存储 | 加密存储到本地 SQLite | P0 | partial |
+| FEAT-002 | Provider 预设 | OpenAI、MiniMax、智谱(GLM) 等 | P0 | pass |
+| FEAT-003 | 一键安装 | 支持 stable/beta/dev 版本通道 | P0 | pass |
+| FEAT-004 | 卸载功能 | 干净卸载 OpenClaw | P1 | pass |
+| FEAT-005 | 备份配置 | 打包配置文件 | P0 | pass |
+| FEAT-006 | 安全扫描 | 防火墙/端口检测（需用户授权） | P1 | partial |
+| FEAT-007 | 恢复备份 | 从备份恢复 | P0 | pass |
+| FEAT-008 | 文档搜索 | 离线搜索 OpenClaw 文档 | P1 | pass |
+| FEAT-009 | 版本选择 | 用户可选 OpenClaw 版本 | P0 | partial |
+| FEAT-010 | 环境检测 | 检测 Node.js、平台、防火墙、公网IP等 | P0 | pass |
+| FEAT-011 | 系统诊断 | 检测 OpenClaw 运行状态 | P0 | pass |
 | FEAT-012 | 迁移导出 | 跨平台迁移（Docker/HyperV/原生） | P2 | pending |
-| FEAT-013 | 配置模板 | 预置优化配置（付费跳过、推荐项打开） | P1 | pending |
+| FEAT-013 | 配置模板 | 预置优化配置（付费跳过、推荐项打开） | P1 | partial |
 
 ### 4.2 核心功能详细说明
 

@@ -205,3 +205,117 @@ export async function detectPorts(port: number = 18789): Promise<boolean> {
     }).catch(() => resolve(false));
   });
 }
+
+export interface DockerInfo {
+  installed: boolean;
+  running: boolean;
+  version: string | null;
+  error?: string;
+}
+
+export interface WSLInfo {
+  installed: boolean;
+  version: string | null;
+  distros: string[];
+  defaultDistro: string | null;
+}
+
+export async function checkDockerStatus(): Promise<DockerInfo> {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32' && process.platform !== 'linux') {
+      resolve({ installed: false, running: false, version: null, error: 'Docker Desktop is only available on Windows and Linux' });
+      return;
+    }
+
+    // First check if docker command exists
+    const whichCmd = process.platform === 'win32' ? 'where docker' : 'which docker';
+    exec(whichCmd, { encoding: 'utf8' }, (err) => {
+      if (err) {
+        resolve({ installed: false, running: false, version: null, error: 'Docker command not found' });
+        return;
+      }
+
+      // Try to get docker version
+      exec('docker version', { encoding: 'utf8', timeout: 10000 }, (versionErr, versionStdout) => {
+        if (versionErr) {
+          // Docker installed but not running
+          resolve({ installed: true, running: false, version: null, error: 'Docker is not running' });
+          return;
+        }
+
+        // Parse version from output
+        let version: string | null = null;
+        const versionMatch = versionStdout.match(/Client version:\s*v?(\d+\.\d+\.\d+)/i);
+        if (versionMatch) {
+          version = versionMatch[1];
+        }
+
+        // Check if docker info works (confirms running state)
+        exec('docker info', { encoding: 'utf8', timeout: 10000 }, (infoErr) => {
+          resolve({
+            installed: true,
+            running: !infoErr,
+            version,
+            error: infoErr ? 'Docker daemon not accessible' : undefined,
+          });
+        });
+      });
+    });
+  });
+}
+
+export async function checkWSLStatus(): Promise<WSLInfo> {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') {
+      resolve({ installed: false, version: null, distros: [], defaultDistro: null });
+      return;
+    }
+
+    // Check WSL status
+    exec('wsl --status', { encoding: 'utf8', timeout: 10000 }, (statusErr, statusStdout) => {
+      if (statusErr) {
+        resolve({ installed: false, version: null, distros: [], defaultDistro: null });
+        return;
+      }
+
+      // Parse WSL version
+      let version: string | null = null;
+      const versionMatch = statusStdout.match(/WSL\s+(\d+)/i) || statusStdout.match(/version\s+(\d+)/i);
+      if (versionMatch) {
+        version = versionMatch[1];
+      }
+
+      // List installed distros
+      exec('wsl --list', { encoding: 'utf8', timeout: 10000 }, (listErr, listStdout) => {
+        const distros: string[] = [];
+        let defaultDistro: string | null = null;
+
+        if (!listErr) {
+          const lines = listStdout.split('\n').filter((line) => line.trim() && !line.includes('---'));
+          for (const line of lines) {
+            const trimmed = line.trim();
+            // Lines look like: "Ubuntu (Default)" or "docker-desktop-data *"
+            const distroName = trimmed.replace(/\s*\([^)]*\)\s*\*?$/, '').trim();
+            if (distroName) {
+              distros.push(distroName);
+              if (trimmed.includes('(Default)') || trimmed.endsWith('*')) {
+                defaultDistro = distroName;
+              }
+            }
+          }
+          // If no default marker found, use first distro
+          if (!defaultDistro && distros.length > 0) {
+            defaultDistro = distros[0];
+          }
+        }
+
+        resolve({
+          installed: true,
+          version,
+          distros,
+          defaultDistro,
+        });
+      });
+    });
+  });
+}

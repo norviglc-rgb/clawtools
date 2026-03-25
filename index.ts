@@ -21,3 +21,6 @@ export type { AppConfig, ProviderRecord, BackupRecord, HistoryRecord } from './d
 
 export { providerPresets, recommendedConfig, defaultOpenClawConfig } from './config/providers';
 export type { ProviderPreset } from './config/providers';
+
+export { exportForMigration, importMigration, getMigrationPlatformConfig, listMigrationPlatforms } from './core/migration';
+export type { MigrationPlatform, MigrationManifest, MigrationExportResult, MigrationImportResult, PathMapping, PlatformConfig } from './core/migration';

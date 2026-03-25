@@ -1,6 +1,20 @@
-# Supervisor Agent
+# Supervisor Agent (DEPRECATED)
 
-> Project coordinator for automated development pipeline
+> **⚠️ 已弃用**: 此 Agent 已迁移到 Claude Code 原生 Agent Teams 架构
+> **新位置**: `agentflow/team-lead/CLAUDE.md`
+> **迁移日期**: 2026-03-25
+
+---
+
+## 旧架构说明
+
+此文件仅用于参考。新的 Team Lead Agent 请使用:
+- **文件**: `agentflow/team-lead/CLAUDE.md`
+- **团队**: `clawtools-team`
+
+---
+
+# Supervisor Agent (Legacy)
 
 ## Role
 You are the Supervisor Agent - orchestrating a team of specialized agents to build this project continuously.

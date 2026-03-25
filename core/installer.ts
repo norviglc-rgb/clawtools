@@ -5,10 +5,24 @@ import * as os from 'os';
 
 export type InstallChannel = 'stable' | 'beta' | 'dev';
 export type InstallMethod = 'npm' | 'script' | 'docker';
+export type InstallPlatform = 'native' | 'docker' | 'wsl';
+
+export interface DockerInstallResult {
+  success: boolean;
+  message: string;
+  dockerVersion?: string;
+}
+
+export interface WSLInstallResult {
+  success: boolean;
+  message: string;
+  distro?: string;
+}
 
 export interface InstallOptions {
   method: InstallMethod;
   channel: InstallChannel;
+  platform: InstallPlatform;
   version?: string;
   global?: boolean;
 }
@@ -85,6 +99,161 @@ export async function installNode(platform: string): Promise<NodeInstallResult> 
   });
 }
 
+export async function installDocker(): Promise<DockerInstallResult> {
+  if (process.platform !== 'win32' && process.platform !== 'linux') {
+    return { success: false, message: 'Docker Desktop is only available on Windows and Linux' };
+  }
+
+  return new Promise((resolve) => {
+    const { execSync } = require('child_process');
+
+    // Check if Docker is already installed
+    try {
+      const versionOutput = execSync('docker --version', { encoding: 'utf8' }).trim();
+      const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/);
+      const dockerVersion = versionMatch ? versionMatch[1] : null;
+      resolve({ success: true, message: `Docker is already installed (${versionOutput})`, dockerVersion });
+      return;
+    } catch {}
+
+    if (process.platform === 'win32') {
+      // Windows: Download and install Docker Desktop silently
+      try {
+        console.log('[ClawTools] Downloading Docker Desktop for Windows...');
+        const dockerUrl = 'https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe';
+        const installerPath = path.join(os.tmpdir(), 'docker-desktop-installer.exe');
+
+        execSync(`powershell -Command "Invoke-WebRequest -Uri '${dockerUrl}' -OutFile '${installerPath}'"`, { stdio: 'inherit' });
+
+        console.log('[ClawTools] Installing Docker Desktop (this may take a few minutes)...');
+        execSync(`"${installerPath}" install --quiet`, { stdio: 'inherit' });
+
+        // Clean up installer
+        try { fs.unlinkSync(installerPath); } catch {}
+
+        console.log('[ClawTools] Waiting for Docker service to start...');
+        // Wait for Docker to start (max 60 seconds)
+        const maxWait = 60;
+        let dockerReady = false;
+        for (let i = 0; i < maxWait; i++) {
+          try {
+            execSync('docker info', { stdio: 'pipe' });
+            dockerReady = true;
+            break;
+          } catch {
+            execSync('timeout /t 1 /nobreak > nul', { stdio: 'pipe' });
+          }
+        }
+
+        if (dockerReady) {
+          const versionOutput = execSync('docker --version', { encoding: 'utf8' }).trim();
+          const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/);
+          resolve({
+            success: true,
+            message: 'Docker Desktop installed and running successfully',
+            dockerVersion: versionMatch ? versionMatch[1] : undefined,
+          });
+        } else {
+          resolve({ success: true, message: 'Docker Desktop installed - please restart your computer or start Docker manually' });
+        }
+      } catch (error: any) {
+        resolve({ success: false, message: `Docker Desktop installation failed: ${error.message}` });
+      }
+    } else {
+      // Linux: Use package manager
+      try {
+        console.log('[ClawTools] Installing Docker on Linux...');
+        execSync('curl -fsSL https://get.docker.com -o /tmp/get-docker.sh', { stdio: 'inherit' });
+        execSync('sh /tmp/get-docker.sh', { stdio: 'inherit' });
+        execSync('rm -f /tmp/get-docker.sh', { stdio: 'pipe' });
+
+        // Add current user to docker group
+        try {
+          execSync('sudo usermod -aG docker $USER', { stdio: 'inherit' });
+        } catch {}
+
+        const versionOutput = execSync('docker --version', { encoding: 'utf8' }).trim();
+        const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/);
+        resolve({
+          success: true,
+          message: 'Docker installed successfully',
+          dockerVersion: versionMatch ? versionMatch[1] : undefined,
+        });
+      } catch (error: any) {
+        resolve({ success: false, message: `Docker installation failed: ${error.message}` });
+      }
+    }
+  });
+}
+
+export async function installWSL(): Promise<WSLInstallResult> {
+  if (process.platform !== 'win32') {
+    return { success: false, message: 'WSL is only available on Windows' };
+  }
+
+  return new Promise((resolve) => {
+    const { execSync } = require('child_process');
+
+    // Check if WSL is already installed
+    try {
+      const statusOutput = execSync('wsl --status', { encoding: 'utf8' }).trim();
+      const listOutput = execSync('wsl --list', { encoding: 'utf8' }).trim();
+      const lines = listOutput.split('\n').filter((line: string) => line.trim() && !line.includes('---'));
+      const distros: string[] = [];
+      let defaultDistro: string | null = null;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        const distroName = trimmed.replace(/\s*\([^)]*\)\s*\*?$/, '').trim();
+        if (distroName) {
+          distros.push(distroName);
+          if (trimmed.includes('(Default)') || trimmed.endsWith('*')) {
+            defaultDistro = distroName;
+          }
+        }
+      }
+
+      if (distros.length > 0) {
+        resolve({
+          success: true,
+          message: `WSL is already installed with ${distros.length} distro(s)`,
+          distro: defaultDistro || distros[0],
+        });
+        return;
+      }
+    } catch {}
+
+    // Install WSL
+    try {
+      console.log('[ClawTools] Enabling Windows Subsystem for Linux...');
+      execSync('powershell -Command "dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart"', { stdio: 'inherit' });
+
+      console.log('[ClawTools] Installing Ubuntu as the default Linux distribution...');
+      execSync('wsl --install -d Ubuntu', { stdio: 'inherit' });
+
+      console.log('[ClawTools] WSL installation initiated - a restart may be required');
+      resolve({
+        success: true,
+        message: 'WSL and Ubuntu have been installed - please restart your computer if prompted',
+        distro: 'Ubuntu',
+      });
+    } catch (error: any) {
+      // If standard install fails, try online installation method
+      try {
+        console.log('[ClawTools] Trying online WSL installation...');
+        execSync('powershell -Command "wsl --install --online"', { stdio: 'inherit' });
+        resolve({
+          success: true,
+          message: 'WSL installed successfully',
+          distro: 'Ubuntu',
+        });
+      } catch (retryError: any) {
+        resolve({ success: false, message: `WSL installation failed: ${retryError.message}` });
+      }
+    }
+  });
+}
+
 const NPM_MIRRORS = [
   'https://registry.npmmirror.com',
   'https://mirrors.tuna.tsinghua.edu.cn/npm',
@@ -101,10 +270,44 @@ async function testMirror(mirror: string): Promise<boolean> {
 }
 
 export async function installOpenClaw(options: InstallOptions): Promise<InstallResult> {
-  const { method, channel, version } = options;
+  const { method, channel, platform, version } = options;
   const versionSpec = version || (channel === 'stable' ? 'latest' : channel);
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
 
+  // Platform-specific installation
+  if (platform === 'docker') {
+    // Docker platform - run OpenClaw in a Docker container
+    try {
+      const dockerImage = `openclaw/openclaw:${versionSpec}`;
+      console.log(`[ClawTools] Pulling Docker image ${dockerImage}...`);
+      execSync(`docker pull ${dockerImage}`, { stdio: 'inherit', shell });
+      return {
+        success: true,
+        message: `OpenClaw is available via Docker: docker run ${dockerImage}`,
+        path: dockerImage,
+      };
+    } catch (error: any) {
+      return { success: false, message: `Docker platform setup failed: ${error.message}` };
+    }
+  }
+
+  if (platform === 'wsl') {
+    // WSL platform - install inside WSL
+    if (process.platform !== 'win32') {
+      return { success: false, message: 'WSL platform is only available on Windows' };
+    }
+    try {
+      console.log('[ClawTools] Installing OpenClaw inside WSL...');
+      // Run installation inside WSL Ubuntu
+      const wslInstallCmd = `wsl -d Ubuntu -e bash -c "curl -fsSL https://openclaw.ai/install.sh | bash"`;
+      execSync(wslInstallCmd, { stdio: 'inherit' });
+      return { success: true, message: 'OpenClaw installed inside WSL' };
+    } catch (error: any) {
+      return { success: false, message: `WSL installation failed: ${error.message}` };
+    }
+  }
+
+  // Native platform installation
   // Docker method - no mirror needed
   if (method === 'docker') {
     try {
@@ -226,6 +429,69 @@ export async function uninstallOpenClaw(): Promise<InstallResult> {
   } catch (error: any) {
     return { success: false, message: `Uninstall failed: ${error.message}` };
   }
+}
+
+export interface VersionInfo {
+  version: string;
+  channel: InstallChannel;
+  isLatest: boolean;
+}
+
+export interface VersionListResult {
+  success: boolean;
+  versions: VersionInfo[];
+  error?: string;
+}
+
+function parseChannel(version: string): InstallChannel {
+  if (version.includes('beta')) return 'beta';
+  if (version.includes('dev') || version.includes('alpha')) return 'dev';
+  return 'stable';
+}
+
+export async function getVersionList(): Promise<VersionListResult> {
+  const NPM_MIRRORS = [
+    'https://registry.npmmirror.com',
+    'https://registry.npmmirror.org',
+    'https://registry.npmjs.org',
+  ];
+
+  for (const mirror of NPM_MIRRORS) {
+    try {
+      const output = execSync(`npm view openclaw versions --json --registry=${mirror}`, {
+        encoding: 'utf8',
+        timeout: 15000,
+      });
+      const allVersions: string[] = JSON.parse(output);
+
+      // Get dist-tags to find latest
+      const tagsOutput = execSync(`npm view openclaw dist-tags --json --registry=${mirror}`, {
+        encoding: 'utf8',
+        timeout: 15000,
+      });
+      const distTags: Record<string, string> = JSON.parse(tagsOutput);
+      const latestVersion = distTags['latest'] || '';
+
+      // Get last 30 versions and reverse to show newest first
+      const recentVersions = allVersions.slice(-30).reverse();
+
+      const versionInfos: VersionInfo[] = recentVersions.map((v) => ({
+        version: v,
+        channel: parseChannel(v),
+        isLatest: v === latestVersion,
+      }));
+
+      return { success: true, versions: versionInfos };
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    success: false,
+    versions: [],
+    error: 'Failed to fetch versions from all mirrors',
+  };
 }
 
 export function getAvailableVersions(): string[] {
