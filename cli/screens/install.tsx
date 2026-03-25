@@ -17,6 +17,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
   const [dockerInfo, setDockerInfo] = useState<DockerInfo | null>(null);
   const [wslInfo, setWslInfo] = useState<WSLInfo | null>(null);
   const [cursorIndex, setCursorIndex] = useState(0);
+  const [installError, setInstallError] = useState<string>('');
 
   const VERSIONS_PER_PAGE = 10;
 
@@ -37,6 +38,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
   const handleInstall = async () => {
     setStep('installing');
+    setInstallError('');
     const versionToInstall = selectedVersion?.version || 'stable';
 
     setMessage(`正在安装 OpenClaw (${versionToInstall})...`);
@@ -48,8 +50,14 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
       version: selectedVersion?.version,
     });
 
-    setMessage(result.message);
-    setStep('done');
+    if (result.success) {
+      setMessage(result.message);
+      setStep('done');
+    } else {
+      // Capture detailed error
+      setInstallError(result.message);
+      setStep('done');
+    }
   };
 
   const handlePlatformSelect = useCallback((platform: InstallPlatform) => {
@@ -131,6 +139,16 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
     }
   }, [step, versionList, versionPage, loadVersions, handlePlatformSelect, dockerInfo, wslInfo, cursorIndex]);
 
+  // Auto-proceed when Docker is detected as running
+  useEffect(() => {
+    if (step === 'docker-check' && dockerInfo?.running) {
+      const timer = setTimeout(() => {
+        handleInstall();
+      }, 1000); // Auto proceed after 1 second
+      return () => clearTimeout(timer);
+    }
+  }, [step, dockerInfo]);
+
   useEffect(() => {
     process.stdin.setRawMode(true);
     process.stdin.on('data', handleKeypress);
@@ -192,7 +210,7 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
             <Text color="green">Docker 已安装并正在运行</Text>
             {dockerInfo.version && <Text dimColor>版本: {dockerInfo.version}</Text>}
             <Box marginTop={1}>
-              <Text>按 [回车] 继续 Docker 安装</Text>
+              <Text>正在自动继续安装...</Text>
             </Box>
           </>
         ) : isInstalled ? (
@@ -323,11 +341,19 @@ export function InstallScreen({ systemInfo }: { systemInfo: SystemInfo }) {
 
   const renderDone = () => (
     <Box flexDirection="column" padding={1}>
-      <Text bold>安装完成</Text>
+      <Text bold>{installError ? '安装失败' : '安装完成'}</Text>
       <Box marginY={1}>
         <Text dimColor>─────────────────────────────────────</Text>
       </Box>
-      <Text>{message}</Text>
+      <Text color={installError ? 'red' : undefined}>{installError || message}</Text>
+      {installError && selectedPlatform === 'docker' && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text dimColor>常见问题：</Text>
+          <Text dimColor>- Docker Desktop 未启动</Text>
+          <Text dimColor>- 网络连接问题</Text>
+          <Text dimColor>- 镜像不存在或需要登录</Text>
+        </Box>
+      )}
       <Box marginTop={1}>
         <Text dimColor>按 [回车] 返回主菜单</Text>
       </Box>

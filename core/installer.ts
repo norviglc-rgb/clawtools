@@ -280,14 +280,17 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
     try {
       const dockerImage = `openclaw/openclaw:${versionSpec}`;
       console.log(`[ClawTools] Pulling Docker image ${dockerImage}...`);
-      execSync(`docker pull ${dockerImage}`, { stdio: 'inherit', shell });
+      execSync(`docker pull ${dockerImage}`, { stdio: ['inherit', 'pipe', 'pipe'], shell });
       return {
         success: true,
         message: `OpenClaw is available via Docker: docker run ${dockerImage}`,
         path: dockerImage,
       };
     } catch (error: any) {
-      return { success: false, message: `Docker platform setup failed: ${error.message}` };
+      // Capture stderr for detailed error message
+      const stderr = error.stderr ? error.stderr.toString() : '';
+      const detailMsg = stderr.trim() || error.message;
+      return { success: false, message: `Docker 拉取失败: ${detailMsg}` };
     }
   }
 
