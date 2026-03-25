@@ -74,6 +74,9 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
       }
 
       if (!showScreenRef.current) {
+        // Normalize key - remove trailing carriage return/newline
+        const normalizedKey = key.replace(/[\r\n]$/, '');
+
         if (key === '\u001b[A') {
           const newIndex = Math.max(0, cursorIndexRef.current - 1);
           setCursorIndex(newIndex);
@@ -82,6 +85,9 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
           const newIndex = Math.min(menuKeys.length - 1, cursorIndexRef.current + 1);
           setCursorIndex(newIndex);
           setSelectedMenu(menuKeys[newIndex]);
+        } else if (normalizedKey === 'q' || normalizedKey === 'Q') {
+          // Quit on 'q' or 'Q'
+          process.exit(0);
         } else if (key === '\r' || key === '\n') {
           const selected = menuKeys[cursorIndexRef.current];
           if (selected === 'exit') {
@@ -90,7 +96,7 @@ export function App({ systemInfo }: { systemInfo: SystemInfo }) {
           setSelectedMenu(selected);
           setShowScreen(true);
         } else {
-          const item = Object.entries(menuItems).find(([, config]) => config.shortcut === key);
+          const item = Object.entries(menuItems).find(([, config]) => config.shortcut === normalizedKey);
           if (item) {
             if (item[0] === 'exit') {
               process.exit(0);
