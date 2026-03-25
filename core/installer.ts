@@ -276,30 +276,62 @@ const DOCKER_MIRRORS = [
 ];
 
 async function tryDockerMirror(image: string, mirror: string): Promise<{ success: boolean; error?: string }> {
+  // 备份原始 daemon.json
+  const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
+  let backupContent: string | null = null;
+
   try {
     // Windows 配置 Docker 镜像加速器
     if (process.platform === 'win32') {
-      const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
-      const daemonConfig = {
-        "registry-mirrors": [mirror]
-      };
       try {
+        // 备份原始配置
+        if (fs.existsSync(daemonJsonPath)) {
+          backupContent = fs.readFileSync(daemonJsonPath, 'utf8');
+        }
+        const daemonConfig = {
+          "registry-mirrors": [mirror]
+        };
         fs.mkdirSync(path.dirname(daemonJsonPath), { recursive: true });
         fs.writeFileSync(daemonJsonPath, JSON.stringify(daemonConfig, null, 2));
         // 重启 Docker 服务使配置生效
         execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
       } catch (configError) {
-        // 配置失败，继续尝试直接拉取
+        // 配置失败，返回错误
+        return { success: false, error: `配置镜像加速器失败: ${(configError as Error).message}` };
       }
     } else {
       // Linux/Mac 配置
       const registry = mirror.replace(/\/$/, '');
       execSync(`sudo mkdir -p /etc/docker && echo '{"registry-mirrors":["${registry}"]}' | sudo tee /etc/docker/daemon.json && sudo systemctl restart docker`, { stdio: 'pipe', timeout: 60000 });
     }
+
+    // 尝试拉取镜像
     execSync(`docker pull ${image}`, { stdio: 'pipe', timeout: 120000 });
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    // 清理：恢复原始 daemon.json
+    if (backupContent !== null) {
+      try {
+        fs.writeFileSync(daemonJsonPath, backupContent);
+        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+      } catch {}
+    } else if (fs.existsSync(daemonJsonPath)) {
+      try {
+        fs.unlinkSync(daemonJsonPath);
+        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+      } catch {}
+    }
+
+    // 提取有意义的错误信息
+    const errorMsg = error.message || '';
+    if (errorMsg.includes('429')) {
+      return { success: false, error: '镜像服务器请求过多，请稍后重试' };
+    } else if (errorMsg.includes('timeout') || errorMsg.includes('Timed out')) {
+      return { success: false, error: '连接超时，请检查网络' };
+    } else if (errorMsg.includes('connection') || errorMsg.includes('network')) {
+      return { success: false, error: '网络连接失败，请检查网络或 VPN' };
+    }
+    return { success: false, error: errorMsg.substring(0, 200) };
   }
 }
 
@@ -326,45 +358,58 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
           path: dockerImage,
         };
       }
-      console.log('失败');
+      console.log(`失败 (${result.error || '未知错误'})`);
     }
 
     // 镜像都失败，尝试直接拉取
+    // 先清理 daemon.json 中的镜像配置
+    const daemonJsonPath = path.join(os.homedir(), '.docker', 'daemon.json');
+    let backupContent: string | null = null;
+    if (fs.existsSync(daemonJsonPath)) {
+      try {
+        backupContent = fs.readFileSync(daemonJsonPath, 'utf8');
+        // 移除镜像配置，尝试直接拉取
+        fs.unlinkSync(daemonJsonPath);
+        execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+      } catch {}
+    }
+
     try {
       console.log(`[ClawTools] 尝试直接拉取 Docker Hub...`);
-      execSync(`docker pull ${dockerImage}`, { stdio: ['inherit', 'pipe', 'pipe'], shell, timeout: 180000 });
+      execSync(`docker pull ${dockerImage}`, { stdio: 'pipe', timeout: 180000 });
       return {
         success: true,
         message: `OpenClaw 已就绪: docker run ${dockerImage}`,
         path: dockerImage,
       };
     } catch (error: any) {
-      // 尝试其他常见错误修复
-      try {
-        console.log(`[ClawTools] 尝试修复 Docker 配置...`);
-        // 尝试设置 DNS 或重启 Docker 服务
-        execSync(`netcfg -i "Docker NAT" -dns=8.8.8.8 2>/dev/null || true`, { stdio: 'pipe', shell });
-        execSync(`docker pull ${dockerImage}`, { stdio: ['inherit', 'pipe', 'pipe'], shell, timeout: 180000 });
-        return {
-          success: true,
-          message: `OpenClaw 已就绪: docker run ${dockerImage}`,
-          path: dockerImage,
-        };
-      } catch (retryError: any) {
-        const stderr = retryError.stderr ? retryError.stderr.toString() : '';
-        let detailMsg = stderr.trim() || retryError.message;
-
-        // 给出更友好的错误提示
-        if (detailMsg.includes('network') || detailMsg.includes('connection')) {
-          detailMsg = '网络连接失败，请检查网络或 VPN 设置';
-        } else if (detailMsg.includes('not found') || detailMsg.includes('404')) {
-          detailMsg = `镜像 ${dockerImage} 不存在，请检查版本号是否正确`;
-        } else if (detailMsg.includes('authentication') || detailMsg.includes('login')) {
-          detailMsg = '需要登录 Docker Hub，请运行 docker login';
-        }
-
-        return { success: false, message: `Docker 拉取失败: ${detailMsg}` };
+      // 恢复原始 daemon.json
+      if (backupContent !== null) {
+        try {
+          fs.writeFileSync(daemonJsonPath, backupContent);
+          execSync(`net stop com.docker.service && net start com.docker.service`, { stdio: 'pipe', timeout: 30000 });
+        } catch {}
       }
+
+      const errorMsg = error.message || '';
+      let detailMsg = errorMsg;
+
+      // 给出更友好的错误提示
+      if (errorMsg.includes('429')) {
+        detailMsg = 'Docker Hub 请求受限，请稍后重试或使用 VPN';
+      } else if (errorMsg.includes('timeout') || errorMsg.includes('Timed out')) {
+        detailMsg = '连接超时，请检查网络或 VPN';
+      } else if (errorMsg.includes('network') || errorMsg.includes('connection') || errorMsg.includes('unexpected')) {
+        detailMsg = '网络连接失败，请检查网络或 VPN';
+      } else if (errorMsg.includes('not found') || errorMsg.includes('404')) {
+        detailMsg = `镜像 ${dockerImage} 不存在，请检查版本号是否正确`;
+      } else if (errorMsg.includes('authentication') || errorMsg.includes('login')) {
+        detailMsg = '需要登录 Docker Hub，请运行 docker login';
+      } else if (errorMsg.includes('unknown')) {
+        detailMsg = '镜像解析失败，可能是网络或 DNS 问题，请尝试使用 VPN';
+      }
+
+      return { success: false, message: `Docker 拉取失败: ${detailMsg}` };
     }
   }
 
