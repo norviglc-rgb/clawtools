@@ -7,6 +7,8 @@ param(
     [string]$RepoUrl = "https://github.com/norviglc-rgb/clawtools.git"
 )
 
+# Set console to UTF-8 mode
+chcp 65001 > $null 2>&1
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 $ErrorActionPreference = "Stop"
