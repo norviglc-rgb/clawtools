@@ -140,3 +140,7 @@ function Install-ClawTools {
 }
 
 Install-ClawTools
+
+# Launch clawtools
+Write-Host "Starting ClawTools..."
+& "$InstallDir\clawtools.cmd"
