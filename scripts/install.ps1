@@ -101,15 +101,21 @@ function Install-ClawTools {
     Set-Location $InstallDir
     npm install
 
-    # Fix security vulnerabilities
+    # Fix security vulnerabilities (only if high+ vulnerabilities exist)
     Write-Host "Checking for security vulnerabilities..." -ForegroundColor Cyan
     try {
-        npm audit fix --force 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "No vulnerabilities found." -ForegroundColor Green
+        npm audit --audit-level=high 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Fixing vulnerabilities..." -ForegroundColor Yellow
+            npm audit fix --force 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Vulnerabilities fixed." -ForegroundColor Green
+            }
+        } else {
+            Write-Host "No high severity vulnerabilities found." -ForegroundColor Green
         }
     } catch {
-        Write-Host "No vulnerabilities found." -ForegroundColor Green
+        Write-Host "Vulnerability check skipped." -ForegroundColor Yellow
     }
 
     npm run build
