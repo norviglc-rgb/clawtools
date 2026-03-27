@@ -97,6 +97,8 @@ export function InstallScreen({ systemInfo, onExit }: InstallScreenProps) {
       } else if (key === 'v') {
         loadVersions();
         setStep('versions');
+      } else if (key === '\x1b') { // ESC
+        onExit();
       }
     } else if (step === 'docker-check') {
       if (key === 'r') {
@@ -192,7 +194,7 @@ export function InstallScreen({ systemInfo, onExit }: InstallScreenProps) {
       })}
 
       <Box marginTop={1} marginBottom={1}>
-        <Text dimColor>[↑/↓] 导航 | [空格/回车] 选择并安装 | [v] 指定版本</Text>
+        <Text dimColor>[↑/↓] 导航 | [空格/回车] 选择并安装 | [v] 指定版本 | [Esc] 返回</Text>
       </Box>
     </Box>
   );
