@@ -351,12 +351,57 @@ export async function installOpenClaw(options: InstallOptions): Promise<InstallR
       }
     };
 
-    // 如果 Docker 未运行，直接返回错误
+    // 尝试自动启动 Docker Desktop
+    const startDockerDesktop = (): boolean => {
+      if (process.platform !== 'win32') return false;
+
+      const dockerPaths = [
+        `${process.env['ProgramFiles']}\\Docker\\Docker\\Docker Desktop.exe`,
+        `${process.env['ProgramW6432']}\\Docker\\Docker\\Docker Desktop.exe`,
+        `${process.env['LOCALAPPDATA']}\\Docker\\Docker\\Docker Desktop.exe`,
+      ];
+
+      for (const dockerPath of dockerPaths) {
+        try {
+          if (fs.existsSync(dockerPath)) {
+            console.log(`[ClawTools] 自动启动 Docker Desktop...`);
+            // 使用 start 命令在后台启动，避免阻塞
+            execSync(`start "" "${dockerPath}"`, { stdio: 'pipe', shell: 'cmd.exe' });
+            return true;
+          }
+        } catch {}
+      }
+      return false;
+    };
+
+    // 等待 Docker 启动（最多等待 60 秒）
+    const waitForDocker = (maxWaitSeconds: number = 60): boolean => {
+      for (let i = 0; i < maxWaitSeconds; i++) {
+        if (isDockerRunning()) return true;
+        execSync('timeout /t 1 /nobreak > nul', { stdio: 'pipe' });
+      }
+      return isDockerRunning();
+    };
+
+    // 如果 Docker 未运行，尝试自动启动
     if (!isDockerRunning()) {
-      return {
-        success: false,
-        message: 'Docker Desktop 未启动，请先启动 Docker Desktop',
-      };
+      const started = startDockerDesktop();
+      if (started) {
+        console.log(`[ClawTools] 等待 Docker Desktop 启动...`);
+        const ready = waitForDocker(60);
+        if (!ready) {
+          return {
+            success: false,
+            message: 'Docker Desktop 启动超时，请手动启动 Docker Desktop 后重试',
+          };
+        }
+        console.log(`[ClawTools] Docker Desktop 已就绪`);
+      } else {
+        return {
+          success: false,
+          message: '未找到 Docker Desktop，请先安装 Docker Desktop',
+        };
+      }
     }
 
     // 清理函数：恢复 Docker 到干净状态
