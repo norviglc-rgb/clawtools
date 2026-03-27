@@ -22,7 +22,7 @@
     "build": "tsc && node scripts/fix-imports.js",
     "start": "node ./bin/cli/index.js",
     "dev": "npm run build && node ./bin/cli/index.js",
-    "postinstall": "npm audit fix --force",
+    "postinstall": "npm audit --audit-level=high || npm audit fix --force",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'No lint configured' && exit 0"
   },
