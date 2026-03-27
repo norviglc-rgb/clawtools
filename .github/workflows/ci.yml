@@ -17,9 +17,6 @@ jobs:
   quality:
     name: Quality Checks
     runs-on: ubuntu-latest
-    outputs:
-      can_trigger_agent: ${{ steps.check.outputs.can_trigger }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,103 +36,6 @@ jobs:
 
       - name: ESLint
         run: npm run lint || true
-
-      - id: check
-        run: echo "can_trigger=true" >> $GITHUB_OUTPUT
-
-  # =============================================================================
-  # Update Progress - Always runs
-  # =============================================================================
-  progress:
-    name: Update Progress
-    runs-on: ubuntu-latest
-    needs: quality
-    if: github.ref == 'refs/heads/develop'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Update PROGRESS.md
-        run: |
-          echo "### $(date '+%Y-%m-%d %H:%M')" >> PROGRESS.md
-          echo "| CI | GitHub Actions | Push: ${{ github.event_name }} |" >> PROGRESS.md
-
-      - name: Commit if changed
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          if git diff --quiet PROGRESS.md; then
-            echo "No changes"
-          else
-            git add PROGRESS.md
-            git commit -m "docs: update progress [skip ci]" || true
-            git push || true
-          fi
-
-  # =============================================================================
-  # Trigger Supervisor Agent (on push to develop, quality passed)
-  # =============================================================================
-  trigger-agent:
-    name: Trigger Supervisor
-    runs-on: ubuntu-latest
-    needs: [quality, progress]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    concurrency:
-      group: supervisor
-      cancel-in-progress: false
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Read feature status
-        id: features
-        run: |
-          FEATURES_PENDING=$(jq '[.features[] | select(.status == "pending")] | length' FEATURES.json 2>/dev/null || echo "0")
-          echo "Pending features: $FEATURES_PENDING"
-          echo "pending=$FEATURES_PENDING" >> $GITHUB_OUTPUT
-
-      - name: Decision
-        run: |
-          PENDING=${{ steps.features.outputs.pending }}
-          if [ "$PENDING" -eq 0 ]; then
-            echo "All features complete!"
-            echo "all_done=true" >> $GITHUB_OUTPUT
-          else
-            echo "Features remaining: $PENDING"
-            echo "all_done=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Trigger Supervisor via workflow_dispatch
-        if: steps.features.outputs.all_done == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // Trigger supervisor workflow
-            try {
-              await github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'supervisor.yml',
-                ref: 'develop',
-                inputs: {
-                  trigger: 'push',
-                  commit: context.sha
-                }
-              });
-              console.log('✓ Supervisor workflow triggered');
-            } catch (e) {
-              console.log('⚠ Could not trigger supervisor:', e.message);
-              console.log('  Supervisor can be started manually:');
-              console.log('  bash .agentflow/supervisor-loop.sh start');
-            }
-
-      - name: Notify completion
-        if: steps.features.outputs.all_done == 'true'
-        run: |
-          echo "🎉 All features completed!"
-          echo "Project is ready for release."
 
   # =============================================================================
   # Release (on push to main)

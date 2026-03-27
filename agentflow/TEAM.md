@@ -1,177 +1,147 @@
-# ClawTools Team - 团队架构文档
+# ClawTools Team - Claude Code 主开发团队说明
+
+更新时间：2026-03-27
+
+本文件定义 Claude Code agent team 的唯一有效组织方式。Codex 不属于该 team，而是在 team 外部做监督、审查和文档治理。
 
 ## 团队信息
 
 | 属性 | 值 |
 |------|-----|
-| **Team Name** | clawtools-team |
-| **Description** | ClawTools OpenClaw 管理套件开发团队 |
-| **Team Lead** | team-lead |
-| **工作目录** | d:\AI\ClawTools\clawtools |
+| Team Name | `clawtools-team` |
+| Team Lead | `team-lead` |
+| 工作目录 | `d:\AI\ClawTools\clawtools` |
+| 主任务来源 | `fix/07-agent-team-taskboard.md` |
+| 主流程来源 | `fix/08-agent-workflows.md` |
 
-## Agent 成员
+## 角色
 
-### team-lead
+### `team-lead`
 
-**角色**: 团队主管
-**映射自**: 旧架构 Supervisor Agent
-**职责**:
-- 从 FEATURES.json 分配任务给 implementer
-- 跟踪进度，更新 Task list
-- 判断退出条件
-- 遇到模糊问题时联网搜索
+职责：
 
-**通信**:
-- 分配任务: `SendMessage(to: "implementer-{a|b|c}")`
-- 接收报告: `SendMessage(from: implementer-*)`
-- 联网搜索: `WebSearch`, `WebFetch`
+- 读取 `fix/07-agent-team-taskboard.md`
+- 按依赖拆解任务并分配给 implementer
+- 控制 WIP、避免文件冲突
+- 检查完成包是否满足 Definition of Done
+- 遇到阻塞时升级，不亲自抢实现任务
 
----
+### `implementer-a`
 
-### implementer-a
+职责：
 
-**角色**: 功能实现者
-**映射自**: 旧架构 Coding Agent
-**职责**:
-- 实现分配的功能
-- 遵循质量标准 (typecheck, lint)
-- 完成后报告 team-lead
+- 安全与配置链路实现
 
-**分配任务**:
-1. FEAT-001: API Key 安全存储
-2. FEAT-013: 配置模板
+范围：
 
-**通信**:
-- 接收任务: `SendMessage(from: team-lead)`
-- 完成任务: `SendMessage(to: "team-lead")`
+- CT-003
+- CT-005
 
----
+建议文件域：
 
-### implementer-b
+- `core/configurator.ts`
+- `cli/screens/config.tsx`
 
-**角色**: 功能实现者
-**映射自**: 旧架构 Coding Agent
-**职责**:
-- 实现分配的功能
-- 遵循质量标准
+### `implementer-b`
 
-**分配任务**:
-1. FEAT-006: 安全扫描
-2. FEAT-012: 迁移导出 (P2)
+职责：
 
-**通信**:
-- 接收任务: `SendMessage(from: team-lead)`
-- 完成任务: `SendMessage(to: "team-lead")`
+- 数据层、稳定性、测试
 
----
+范围：
 
-### implementer-c
+- CT-004
+- CT-006
+- CT-007
 
-**角色**: 功能实现者
-**映射自**: 旧架构 Coding Agent
-**职责**:
-- 实现分配的功能
-- 遵循质量标准
+建议文件域：
 
-**分配任务**:
-1. FEAT-009: 版本选择
+- `db/index.ts`
+- `cli/App.tsx`
+- `tests/*`
 
-**通信**:
-- 接收任务: `SendMessage(from: team-lead)`
-- 完成任务: `SendMessage(to: "team-lead")`
+### `implementer-c`
 
----
+职责：
 
-### sync-writer
+- 安装、发布链路、lint、交互优化
 
-**角色**: 同步写入
-**类型**: 新增 (旧架构无直接映射)
-**职责**:
-- 维护 FEATURES.json 和 Task list 的同步
-- 初始化时同步 pending 任务到 Task list
-- 运行时将 Task 完成状态回写到 FEATURES.json
+范围：
 
-**通信**:
-- 响应 team-lead 的同步请求
+- CT-001
+- CT-002
+- CT-008
+- CT-010
 
----
+建议文件域：
 
-## 任务分配矩阵
+- `scripts/install.ps1`
+- `package.json`
+- `cli/screens/install.tsx`
+- `.github/workflows/*` 中与 lint/release 相关部分
 
-| Implementer | 任务 | 依赖模块 | 优先级 |
-|-------------|------|----------|--------|
-| implementer-a | FEAT-001 | core/configurator.ts | P0 |
-| implementer-b | FEAT-006 | (独立) | P1 |
-| implementer-c | FEAT-009 | core/installer.ts | P0 |
-| implementer-a | FEAT-013 | config/providers.ts | P1 |
-| implementer-b | FEAT-012 | (独立) | P2 |
+## 不属于 Claude Team 的角色
 
-## 并行策略
+### Codex Reviewer
 
-### Phase 1 (当前)
-- implementer-a → FEAT-001
-- implementer-b → FEAT-006
-- implementer-c → FEAT-009
+Codex 不是 team member，不领取实现任务，不直接推动 Claude 的任务状态。
 
-### Phase 2 (后续)
-- implementer-a → FEAT-013
-- implementer-b → FEAT-012
+Codex 负责：
 
-## 双轨制同步
+- 日检
+- 阶段审查
+- 发布 readiness 审查
+- fix 文档与验证矩阵回写
+- 复盘
 
-```
-FEATURES.json (持久化)          Task list (运行时)
-        │                              │
-        │  初始化: 同步 pending         │
-        │ ───────────────────────────→ │
-        │                              │
-        │  运行时: Task 完成回写         │
-        │ ←─────────────────────────── │
-        │                              │
-        │  冲突时 Task list 权威        │
-```
+## 状态机
 
-## 联网搜索配置
+允许状态：
 
-Team Lead 在以下情况下使用 `WebSearch`:
-- TypeScript 编译错误不明确
-- 依赖包版本问题
-- API 行为不确定
-- 技术方案选型
+- `pending`
+- `in_progress`
+- `blocked`
+- `review_ready`
+- `done`
 
-**搜索限制**: 每次问题最多 3 次搜索
+禁止状态：
+
+- 无证据 `done`
+- 用脚本直接写 `pass`
+
+## 任务完成要求
+
+每个任务进入 `review_ready` 之前，必须附上完成包：
+
+- 修改文件
+- 验证命令
+- 验证结果
+- 风险说明
+- 回滚点
+
+## 调度原则
+
+- 每个 implementer 同时最多 1 个 `in_progress`
+- 同文件不允许并发修改
+- P0 任务失败 2 次必须升级
+- 阻塞超过 4 小时必须升级
+- team-lead 优先等待 implementer 完成，不自行吞掉任务
 
 ## 质量门禁
 
-所有 implementer 在报告完成前必须确认:
-- [ ] `npm run typecheck` 通过
-- [ ] `npm run lint` 通过 (无 warnings)
-- [ ] 无 console.log/debugger
-- [ ] FEATURES.json 已更新
+在任务标记 `review_ready` 前至少完成：
 
-## 退出条件
+- `npm run typecheck`
+- 与任务相关的 `lint/test/smoke`
+- 无 console.log/debugger
+- 风险说明已写明
 
-所有条件满足时 Team Lead 退出:
-- 所有 P0/P1 features status="pass"
-- Task list 无 in_progress 任务
-- 无 open P0/P1 bug
+## 已废弃内容
 
-## 关键文件
+以下内容不再作为有效执行依据：
 
-| 文件路径 | 用途 |
-|----------|------|
-| `clawtools/FEATURES.json` | 任务持久化存储 |
-| `clawtools/SPEC.md` | 项目规格文档 |
-| `clawtools/core/*.ts` | 核心业务逻辑 |
-| `clawtools/cli/screens/*.tsx` | TUI 界面 |
-| `clawtools/agentflow/team-lead/CLAUDE.md` | Team Lead 指令 |
-| `clawtools/agentflow/implementer/CLAUDE.md` | Implementer 指令 |
-| `clawtools/agentflow/sync/CLAUDE.md` | Sync 指令 |
+- 旧 FEAT 编号分配方式
+- shell supervisor 自动推进
+- “同步 agent 自动回写完成状态”
 
-## CI/CD 集成
-
-`.github/workflows/supervisor.yml` 可配置为:
-1. 触发 Team 创建
-2. 分配初始任务
-3. 监控进度
-4. 创建 checkpoint
+如果这些机制与 fix 文档冲突，以 `fix/` 下最新治理文档为准。

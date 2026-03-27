@@ -1,55 +1,48 @@
-# Agent Team Specification
+# ClawTools Agent Operating Model
 
-## Agent Hierarchy
+更新时间：2026-03-27
 
-```
-Human (Oversight Only)
-        │
-        ▼
-┌─────────────────────────────────────────────────┐
-│           Supervisor Agent (Master)                │
-│  - Task assignment                               │
-│  - Quality gates                                 │
-│  - Self-correction                               │
-│  - Progress tracking                             │
-└─────────────────────────────────────────────────┘
-           │           │
-           ▼           ▼
-    ┌──────────┐ ┌──────────┐
-    │  Coding  │ │    QA    │
-    │  Agent   │ │   Agent  │
-    └──────────┘ └──────────┘
-           │
-           ▼
-    ┌──────────────┐
-    │   Recovery   │
-    │    Agent     │
-    └──────────────┘
-```
+本仓库只保留一套有效 agent 体系：
 
-## Supervisor Agent
-- **Role**: Project coordination, task assignment
-- **Instructions**: See SUPERVISOR.md or AGENTS/supervisor/CLAUDE.md
-- **Trigger**: On push to develop, manual /supervisor start, scheduled every 6h
-- **Exit**: All P0/P1 pass, no open P0/P1 bugs
+- Claude Code：主开发执行（agent team）
+- Codex：外部监督、审查、文档与复盘
 
-## Coding Agent
-- **Role**: Feature implementation
-- **Instructions**: See AGENTS/coding/CLAUDE.md
-- **Workflow**: Read FEATURES.json → Implement → Typecheck → Update status → Commit
+## 权威文档
 
-## QA Agent
-- **Role**: Code review
-- **Instructions**: See AGENTS/qa/CLAUDE.md
-- **Focus**: TypeScript correctness, error handling, security
+按以下顺序执行：
 
-## Recovery Agent
-- **Role**: Auto-repair
-- **Instructions**: See AGENTS/recovery/CLAUDE.md
-- **Trigger**: When typecheck fails
-- **Scope**: npm deps, TS errors, config corruption
+1. `fix/01-go-no-go-criteria.md`
+2. `fix/07-agent-team-taskboard.md`
+3. `fix/08-agent-workflows.md`
+4. `fix/04-validation-matrix.md`
 
-## Agent Communication
-- **FEATURES.json**: Task status, assignment
-- **PROGRESS.md**: Human-readable log
-- **CHECKPOINTS/**: Periodic snapshots
+## Claude Code 角色
+
+- `team-lead`：任务拆解、分配、门禁检查、阻塞升级
+- `implementer-a`：CT-003、CT-005
+- `implementer-b`：CT-004、CT-006、CT-007
+- `implementer-c`：CT-001、CT-002、CT-008、CT-010
+
+详细说明见：
+
+- `agentflow/TEAM.md`
+- `agentflow/team-lead/CLAUDE.md`
+- `agentflow/implementer/CLAUDE.md`
+
+## Codex 角色
+
+Codex 不加入 Claude team，不领取实现任务。
+
+Codex 负责：
+
+- 定时检查
+- 里程碑审查
+- 发布 readiness 结论
+- 文档回写与复盘沉淀
+
+## 强制规则
+
+- 旧 supervisor/sync 体系已彻底废弃
+- 不允许脚本自动写“完成”
+- 不允许无验证证据关闭任务
+- 任务完成必须附：修改文件、验证命令与结果、风险说明、回滚点

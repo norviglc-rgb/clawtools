@@ -41,3 +41,7 @@ temp/
 # ClawTools specific
 .clawtools/
 docs/
+.agentflow/
+CHECKPOINTS/
+FEATURES.json
+PROGRESS.md

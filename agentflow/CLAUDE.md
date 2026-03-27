@@ -1,116 +1,77 @@
-# AgentFlow v3.0 - Claude Code Agent Teams 架构
+# AgentFlow - Claude Code 主开发架构
 
-> 从 Shell 脚本迁移到 Claude Code 原生 Agent Teams
+更新时间：2026-03-27
 
-## 架构概览
+本目录服务于 Claude Code 的主开发团队，不负责 Codex 的监督逻辑。
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     clawtools-team                          │
-├─────────────────────────────────────────────────────────────┤
-│  team-lead                                                  │
-│  ├── 任务分配 (SendMessage)                                 │
-│  ├── 进度跟踪 (TaskList/TaskUpdate)                         │
-│  ├── 联网搜索 (WebSearch/WebFetch)                          │
-│  └── 退出判断                                               │
-├─────────────────────────────────────────────────────────────┤
-│  implementer-a  │  implementer-b  │  implementer-c          │
-│  FEAT-001       │  FEAT-006       │  FEAT-009               │
-│  (并行)          │  (并行)          │  (并行)                  │
-├─────────────────────────────────────────────────────────────┤
-│  sync-writer                                                 │
-│  └── FEATURES.json ↔ Task list 双向同步                     │
-└─────────────────────────────────────────────────────────────┘
+## 当前架构
+
+```text
+clawtools-team
+├── team-lead
+├── implementer-a
+├── implementer-b
+└── implementer-c
 ```
 
-## 与旧架构对比
+Codex 是 team 外部监督者，不在本架构内。
 
-| 方面 | 旧架构 (init.sh) | 新架构 (Agent Teams) |
-|------|------------------|----------------------|
-| 并发 | 顺序执行 | 3个 implementer 并行 |
-| 任务调度 | shell 脚本 | Task list 原生 |
-| 状态存储 | JSON 文件 + PID | FEATURES.json + Task |
-| Agent 调用 | claude --print | SendMessage 原生 |
-| 联网能力 | 无 | WebSearch/WebFetch |
-| 依赖检查 | 手动 | 自动 + 任务分配时检查 |
+## 架构原则
 
-## 核心文件
+- 主任务来源是 `fix/07-agent-team-taskboard.md`
+- 主执行流程是 `fix/08-agent-workflows.md`
+- Claude team 负责实现与自检
+- Codex 负责审查、纠偏、文档回写、Go/No-Go
 
-| 文件 | 用途 |
-|------|------|
-| `agentflow/team-lead/CLAUDE.md` | Team Lead 指令 |
-| `agentflow/implementer/CLAUDE.md` | Implementer 指令 |
-| `agentflow/sync/CLAUDE.md` | 同步 Agent 指令 |
-| `agentflow/TEAM.md` | 本文件 - 架构总览 |
+## 为什么停用旧方案
 
-## 双轨制
+以下旧方案已不再有效：
 
-### 为什么双轨制？
+- 旧 FEAT-* 任务编号驱动分配
+- shell supervisor 自动推进
+- 用脚本直接把任务写成 `pass`
 
-- **FEATURES.json**: Git 持久化，跨会话保留，适合长期追踪
-- **Task list**: Claude Code 原生，适合运行时调度和 UI 展示
+原因：
 
-### 同步规则
+- 会制造假完成
+- 与当前 fix 文档任务体系不一致
+- 无法满足 “完成必须带证据” 的治理要求
 
-1. 启动时：FEATURES.json → Task list
-2. 运行时：Task 完成 → 回写 FEATURES.json
-3. 冲突时：Task list 为运行时权威
+## 有效执行模型
 
-## 待完成功能
+### team-lead
 
-| ID | 功能 | 状态 | 实现者 |
-|----|------|------|--------|
-| FEAT-001 | API Key 安全存储 | partial | implementer-a |
-| FEAT-006 | 安全扫描 | partial | implementer-b |
-| FEAT-009 | 版本选择 | partial | implementer-c |
-| FEAT-013 | 配置模板 | partial | implementer-a |
-| FEAT-012 | 迁移导出 | pending | implementer-b |
+- 只做分配、协调、阻塞升级、完成包检查
+- 不主动吞实现任务
 
-## 启动命令
+### implementers
 
-```bash
-# 1. 创建 Team
-TeamCreate("clawtools-team")
+- 各自拥有固定文件域
+- 按 work item 执行
+- 完成后提交完成包
 
-# 2. 生成 Team Lead
-Agent(tool: team-lead, role: ...)
+## 启动要求
 
-# 3. 生成 Implementer agents
-Agent(tool: implementer-a, role: ...)
-Agent(tool: implementer-b, role: ...)
-Agent(tool: implementer-c, role: ...)
+创建 Claude team 时，必须明确以下提示：
 
-# 4. 生成 Sync Agent
-Agent(tool: sync-writer, role: ...)
+- 目标仅限修复 P0/P1 发布阻塞
+- 任务来源是 `fix/07-agent-team-taskboard.md`
+- 不允许无验证直接完成
+- 避免同文件并发修改
+- 如 agent teams 不稳定，暂停并等待人工介入
 
-# 5. Team Lead 分配初始任务
-SendMessage(to: "implementer-a", task: FEAT-001)
-SendMessage(to: "implementer-b", task: FEAT-006)
-SendMessage(to: "implementer-c", task: FEAT-009)
-```
+## 推荐团队规模
 
-## 质量门禁
+- `1` 个 lead
+- `3` 个 implementer
 
-| 检查项 | 命令 | 标准 |
-|--------|------|------|
-| TypeScript | `npm run typecheck` | 通过 |
-| ESLint | `npm run lint` | 无 warnings |
-| 代码清洁 | 人工审查 | 无 console.log/debugger |
+这是当前仓库最稳妥的并发规模。除非任务板发生明显扩容，不建议继续增加 teammate 数量。
 
-## 退出条件
+## 关键文件
 
-- 所有 P0/P1 features status="pass"
-- Task list 无 in_progress 任务
-- 无 open P0/P1 bug
-
-## 旧架构保留
-
-`scripts/init.sh` 保留用于：
-- 非 Agent 模式的项目初始化
-- 独立的单任务执行
-- 调试和备用
-
----
-
-**迁移日期**: 2026-03-25
-**版本**: v3.0 → v4.0 (Agent Teams)
+- `agentflow/TEAM.md`
+- `agentflow/team-lead/CLAUDE.md`
+- `agentflow/implementer/CLAUDE.md`
+- `fix/07-agent-team-taskboard.md`
+- `fix/08-agent-workflows.md`
+- `fix/04-validation-matrix.md`
